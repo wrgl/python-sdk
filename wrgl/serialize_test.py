@@ -1,41 +1,39 @@
+import typing
 from unittest import TestCase
 
-from wrgl.serialize import json_loads, json_dumps, Serializable
+import attr
+
+from wrgl.serialize import json_loads, json_dumps, field_transformer
 
 
-class Person(Serializable):
-    fields = {
-        'name': str,
-        'birth_date': str,
-        'height': int
-    }
+@attr.s(field_transformer=field_transformer)
+class Person(object):
+    name = attr.ib(type=str)
+    birth_date = attr.ib(type=str)
+    height = attr.ib(type=int)
 
 
-class Remote(Serializable):
-    fields = {
-        'url': str
-    }
+@attr.s(field_transformer=field_transformer)
+class Remote(object):
+    url = attr.ib(type=str)
 
 
-class Branch(Serializable):
-    fields = {
-        'fetch': str
-    }
+@attr.s(field_transformer=field_transformer)
+class Branch(object):
+    fetch = attr.ib(type=str)
 
 
-class Config(Serializable):
-    fields = {
-        'user': Person,
-        'remotes': [Remote],
-        'branch': {Branch}
-    }
+@attr.s(field_transformer=field_transformer)
+class Config(object):
+    user = attr.ib(type=Person)
+    remotes = attr.ib(type=typing.List[Remote])
+    branch = attr.ib(type=typing.Dict[str, Branch])
 
 
-class Receive(Serializable):
-    fields = {
-        'deny_non_fast_forwards': bool,
-        'deny_deletes': bool
-    }
+@attr.s(field_transformer=field_transformer)
+class Receive(object):
+    deny_non_fast_forwards = attr.ib(type=bool)
+    deny_deletes = attr.ib(type=bool)
 
 
 class JSONTestCase(TestCase):

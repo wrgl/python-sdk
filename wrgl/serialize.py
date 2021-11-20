@@ -1,6 +1,8 @@
 import json
 import re
 
+import attr
+
 
 def to_camel_case(s):
     components = s.split('_')
@@ -14,77 +16,54 @@ def to_snake_case(s):
     return word_break_pattern.sub(r'\1_\2', s).lower()
 
 
+def field_transformer(cls, fields):
+    results = []
+    for field in fields:
+        if type(field.type) is str and field.type == cls.__name__:
+            field = field.evolve(type=cls)
+        if type(field.type) is type:
+            validator = attr.validators.instance_of(field.type)
+        elif getattr(field.type, '__origin__', None) is list:
+            validator = attr.validators.deep_iterable(
+                member_validator=attr.validators.instance_of(
+                    field.type.__args__[0])
+            )
+        elif getattr(field.type, '__origin__', None) is dict:
+            validator = attr.validators.deep_mapping(
+                key_validator=attr.validators.instance_of(
+                    field.type.__args__[0]),
+                value_validator=attr.validators.instance_of(
+                    field.type.__args__[1])
+            )
+        else:
+            raise TypeError(
+                'unanticipated type %s (%s)' % (field.type, type(field.type)))
+        validator = attr.validators.optional(validator)
+        validator = (
+            validator if field.validator is None
+            else attr.validators.and_(field.validator, validator)
+        )
+        results.append(field.evolve(
+            default=None,
+            validator=validator
+        ))
+    return results
+
+
 class _JSONEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Serializable):
+        if attr.has(obj.__class__):
+            fields = attr.fields(obj.__class__)
             return {
-                to_camel_case(k): v
-                for k, v in obj.__dict__.items()
+                to_camel_case(field.name): getattr(obj, field.name)
+                for field in fields if getattr(obj, field.name) is not None
             }
         return super().default(obj)
 
 
-class Serializable(object):
-    fields = dict()
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__()
-        for k, v in kwargs.items():
-            if k not in self.__class__.fields:
-                raise ValueError('unrecognized keyword argument "%s"' % k)
-            cls = self.__class__.fields[k]
-            if type(cls) is list:
-                el_cls = cls[0]
-                if type(v) is not list:
-                    raise TypeError(
-                        'keyword argument "%s" should be a list of %s' % (k, el_cls))
-                for i, e in enumerate(v):
-                    if not isinstance(e, el_cls):
-                        raise TypeError(
-                            'keyword argument "%s"[%d] should be of type %s' % (k, i, el_cls))
-            elif type(cls) is set:
-                for el_cls in cls:
-                    break
-                if type(v) is not dict:
-                    raise TypeError(
-                        'keyword argument "%s" should be a dict of %s' % (
-                            k, el_cls)
-                    )
-                for e_k, e in v.items():
-                    if not isinstance(e, el_cls):
-                        raise TypeError(
-                            'keyword argument "%s"[%s] should be of type %s' % (
-                                k, e_k, el_cls)
-                        )
-            elif not isinstance(v, cls):
-                raise TypeError(
-                    'keyword argument "%s" should be of type %s' % (k, cls))
-            setattr(self, k, v)
-
-    def __repr__(self):
-        return '<%s: %s>' % (
-            self.__class__.__name__,
-            ', '.join([
-                '%s=%s' % (k, v if type(v) is not str else '"%s"' % v)
-                for k, v in self.__dict__.items()
-            ]),
-        )
-
-    def __eq__(self, other):
-        if type(self) != type(other):
-            return False
-        for k, v in self.__dict__.items():
-            if not hasattr(other, k) or getattr(other, k) != v:
-                return False
-        for k, v in other.__dict__.items():
-            if not hasattr(self, k):
-                return False
-        return True
-
-
-def json_dumps(obj, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, indent=None, separators=None, default=None, sort_keys=False, **kwargs):
+def json_dumps(inst, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, indent=None, separators=None, default=None, sort_keys=False, **kwargs):
     return json.dumps(
-        obj, skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular, allow_nan=allow_nan,
+        inst, skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular, allow_nan=allow_nan,
         cls=_JSONEncoder, indent=indent, separators=separators, default=default, sort_keys=sort_keys, **kwargs
     )
 
@@ -96,30 +75,32 @@ def json_loads(s, serializer_cls):
 
 def _deserialize(data, serializer_cls):
     kwargs = dict()
-    if not issubclass(serializer_cls, Serializable):
-        raise TypeError('can only serialize into sub-class of Serializable')
+    fields_dict = attr.fields_dict(serializer_cls)
     data = [
         (to_snake_case(k), v) for k, v in data.items()
     ]
     data_stack = [
-        (kwargs, k, serializer_cls.fields[k], v)
+        (kwargs, k, fields_dict[k], v)
         for k, v in data
     ]
     while len(data_stack) > 0:
-        parent, name, cls, value = data_stack.pop()
-        if not issubclass(serializer_cls, Serializable):
-            raise TypeError('class %s is not sub-class of Serializable' % cls)
-        if type(cls) is list:
-            el_cls = cls[0]
+        parent, name, field, value = data_stack.pop()
+        if type(field.type) is type:
+            try:
+                attr.fields(field.type)
+                parent[name] = _deserialize(value, field.type)
+            except attr.exceptions.NotAnAttrsClassError:
+                parent[name] = value
+        elif field.type.__origin__ is list:
+            el_cls = field.type.__args__[0]
             if type(value) is not list:
                 raise TypeError(
                     'keyword argument "%s" should be a list of %s' % (name, el_cls))
             parent[name] = [
                 _deserialize(e, el_cls) for e in value
             ]
-        elif type(cls) is set:
-            for el_cls in cls:
-                break
+        elif field.type.__origin__ is dict:
+            el_cls = field.type.__args__[1]
             if type(value) is not dict:
                 raise TypeError(
                     'keyword argument "%s" should be a dict of %s' % (
@@ -128,8 +109,6 @@ def _deserialize(data, serializer_cls):
             parent[name] = {
                 k: _deserialize(e, el_cls) for k, e in value.items()
             }
-        elif type(value) is dict:
-            parent[name] = _deserialize(value, cls)
         else:
-            parent[name] = value
+            raise TypeError('unanticipated field type %s' % field.type)
     return serializer_cls(**kwargs)
