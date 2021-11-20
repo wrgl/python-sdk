@@ -7,35 +7,35 @@ import attr
 from wrgl.serialize import field_transformer
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class User(object):
     name = attr.ib(type=str)
     email = attr.ib(type=str)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Receive(object):
     deny_non_fast_forwards = attr.ib(type=bool)
     deny_deletes = attr.ib(type=bool)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Branch(object):
     remote = attr.ib(type=str)
     merge = attr.ib(type=str)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Auth(object):
     token_duration = attr.ib(type=str)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Pack(object):
     max_file_size = attr.ib(type=int)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Remote(object):
     url = attr.ib(type=str)
     fetch = attr.ib(type=typing.List[str])
@@ -43,7 +43,7 @@ class Remote(object):
     mirror = attr.ib(type=bool)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Config(object):
     user = attr.ib(type=User)
     remote = attr.ib(type=typing.Dict[str, Remote])

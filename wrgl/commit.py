@@ -4,13 +4,13 @@ import typing
 from wrgl.serialize import field_transformer
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class CommitResult(object):
     sum = attr.ib(type=str)
     table = attr.ib(type=str)
 
 
-@attr.s(field_transformer=field_transformer)
+@attr.s(field_transformer=field_transformer(globals()))
 class Table(object):
     sum = attr.ib(type=str)
     columns = attr.ib(type=typing.List[str])
@@ -18,7 +18,7 @@ class Table(object):
     rows_count = attr.ib(type=int)
 
 
-@attr.s(auto_attribs=True, field_transformer=field_transformer)
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Commit(object):
     sum: str
     author_name: str
@@ -27,4 +27,10 @@ class Commit(object):
     table: Table
     time: str
     parents: typing.List[str]
-    parent_commits: "Commit"
+    parent_commits: "typing.Dict[str, Commit]"
+
+
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
+class CommitTree(object):
+    sum: str
+    root: Commit

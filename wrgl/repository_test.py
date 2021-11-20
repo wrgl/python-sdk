@@ -1,4 +1,5 @@
 from unittest import TestCase
+import io
 import tempfile
 import pathlib
 import tarfile
@@ -109,6 +110,42 @@ class RepositoryTestCase(TestCase):
             self.assertEqual(cfg, Config(
                 receive=Receive(deny_non_fast_forwards=True, deny_deletes=True)
             ))
+
+            refs = repo.get_refs()
+            self.assertEqual(len(refs), 1)
+            commit1 = repo.get_commit(refs['heads/main'])
+            commit2 = repo.get_branch('main')
+            self.assertEqual(commit1, commit2)
+
+            b = io.StringIO()
+            writer = csv.writer(b)
+            writer.writerow(['a', 'b', 'c'])
+            writer.writerow(['1', 'e', 'w'])
+            writer.writerow(['2', 'c', 's'])
+            cr = repo.commit(
+                'main',
+                'second commit',
+                io.BytesIO(b.getvalue().encode('utf8')),
+                ['a']
+            )
+            self.assertIsNotNone(cr.sum)
+            self.assertIsNotNone(cr.table)
+
+            com_tree = repo.get_commit_tree(cr.sum, 2)
+            self.assertIsNotNone(
+                com_tree.root.parent_commits[commit1.sum].table
+            )
+
+            tbl = repo.get_table(cr.table)
+            self.assertEqual(tbl.columns, ['a', 'b', 'c'])
+            self.assertEqual(list(repo.get_blocks(cr.table)), [
+                ['a', 'b', 'c'], ['1', 'e', 'w'], ['2', 'c', 's']
+            ])
+            self.assertEqual(list(repo.get_rows(cr.table, [0])), [
+                ['1', 'e', 'w']
+            ])
+            dr = repo.diff(cr.sum, commit1.sum)
+            self.assertGreater(len(dr.row_diff), 0)
 
             wrgld.terminate()
             os.remove(f.name)

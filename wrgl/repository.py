@@ -1,13 +1,15 @@
 from typing import Iterator, List
+import tempfile
+import gzip
+import shutil
 import requests
 import csv
 import io
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
-from wrgl.commit import Commit, CommitResult, Table
+from wrgl.commit import Commit, CommitResult, Table, CommitTree
 from wrgl.diff import DiffResponse
 from wrgl.serialize import json_dumps, json_loads
-from wrgl.compression import GzipCompressReadStream
 from wrgl.config import Config
 
 
@@ -85,27 +87,31 @@ class Repository(object):
         return json_loads(r.content, Commit)
 
     def commit(self, branch, message, file, primary_key) -> CommitResult:
-        reader = GzipCompressReadStream(file)
-        m = MultipartEncoder(
-            fields={
-                'branch': branch,
-                'message': message,
-                'primaryKey': primary_key,
-                'file': ('data.csv.gz', reader, 'text/csv')}
-        )
-        r = requests.post(
-            self.endpoint+"/commits/",
-            data=m,
-            headers=self._headers({'Content-Type': m.content_type}),
-        )
+        with tempfile.TemporaryFile() as fp:
+            with gzip.open(fp, 'w') as gzf:
+                shutil.copyfileobj(file, gzf)
+            fp.seek(0)
+            m = MultipartEncoder(
+                fields={
+                    'branch': branch,
+                    'message': message,
+                    'primaryKey': ','.join(primary_key),
+                    'file': ('data.csv.gz', fp, 'text/csv')
+                }
+            )
+            r = requests.post(
+                self.endpoint+"/commits/",
+                data=m,
+                headers=self._headers({'Content-Type': m.content_type}),
+            )
         r.raise_for_status()
         return json_loads(r.content, CommitResult)
 
-    def get_commit_tree(self, head, max_depth) -> Commit:
+    def get_commit_tree(self, head, max_depth) -> CommitTree:
         r = self._get(
             "/commits/", params={'head': head, 'maxDepth': max_depth}
         )
-        return json_loads(r.content, Commit)
+        return json_loads(r.content, CommitTree)
 
     def get_commit(self, commit_sum) -> Commit:
         r = self._get("/commits/%s/" % commit_sum)
@@ -124,7 +130,7 @@ class Repository(object):
                 'columns': 'true' if with_column_names else 'false'
             }
         )
-        for row in csv.reader(io.BytesIO(r.content), dialect='unix'):
+        for row in csv.reader(io.StringIO(r.text), dialect='unix'):
             yield row
 
     def get_rows(self, table_sum, offsets) -> Iterator[List[str]]:
@@ -134,7 +140,7 @@ class Repository(object):
                 'offsets': ','.join([str(v) for v in offsets])
             }
         )
-        for row in csv.reader(io.BytesIO(r.content), dialect='unix'):
+        for row in csv.reader(io.StringIO(r.text), dialect='unix'):
             yield row
 
     def diff(self, sum1, sum2) -> DiffResponse:

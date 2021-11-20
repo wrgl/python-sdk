@@ -1,5 +1,6 @@
 import json
 import re
+import importlib
 
 import attr
 
@@ -16,38 +17,42 @@ def to_snake_case(s):
     return word_break_pattern.sub(r'\1_\2', s).lower()
 
 
-def field_transformer(cls, fields):
-    results = []
-    for field in fields:
-        if type(field.type) is str and field.type == cls.__name__:
-            field = field.evolve(type=cls)
-        if type(field.type) is type:
-            validator = attr.validators.instance_of(field.type)
-        elif getattr(field.type, '__origin__', None) is list:
-            validator = attr.validators.deep_iterable(
-                member_validator=attr.validators.instance_of(
-                    field.type.__args__[0])
+def field_transformer(namespace):
+    def transform(cls, fields):
+        results = []
+        attr.resolve_types(
+            cls, globalns=namespace, localns={cls.__name__: cls}, attribs=fields)
+        for field in fields:
+            if type(field.type) is str and field.type == cls.__name__:
+                field = field.evolve(type=cls)
+            if type(field.type) is type:
+                validator = attr.validators.instance_of(field.type)
+            elif getattr(field.type, '__origin__', None) is list:
+                validator = attr.validators.deep_iterable(
+                    member_validator=attr.validators.instance_of(
+                        field.type.__args__[0])
+                )
+            elif getattr(field.type, '__origin__', None) is dict:
+                validator = attr.validators.deep_mapping(
+                    key_validator=attr.validators.instance_of(
+                        field.type.__args__[0]),
+                    value_validator=attr.validators.instance_of(
+                        field.type.__args__[1])
+                )
+            else:
+                raise TypeError(
+                    'unanticipated type %s (%s)' % (field.type, type(field.type)))
+            validator = attr.validators.optional(validator)
+            validator = (
+                validator if field.validator is None
+                else attr.validators.and_(field.validator, validator)
             )
-        elif getattr(field.type, '__origin__', None) is dict:
-            validator = attr.validators.deep_mapping(
-                key_validator=attr.validators.instance_of(
-                    field.type.__args__[0]),
-                value_validator=attr.validators.instance_of(
-                    field.type.__args__[1])
-            )
-        else:
-            raise TypeError(
-                'unanticipated type %s (%s)' % (field.type, type(field.type)))
-        validator = attr.validators.optional(validator)
-        validator = (
-            validator if field.validator is None
-            else attr.validators.and_(field.validator, validator)
-        )
-        results.append(field.evolve(
-            default=None,
-            validator=validator
-        ))
-    return results
+            results.append(field.evolve(
+                default=None,
+                validator=validator
+            ))
+        return results
+    return transform
 
 
 class _JSONEncoder(json.JSONEncoder):
@@ -86,19 +91,21 @@ def _deserialize(data, serializer_cls):
     while len(data_stack) > 0:
         parent, name, field, value = data_stack.pop()
         if type(field.type) is type:
-            try:
-                attr.fields(field.type)
+            if attr.has(field.type):
                 parent[name] = _deserialize(value, field.type)
-            except attr.exceptions.NotAnAttrsClassError:
+            else:
                 parent[name] = value
         elif field.type.__origin__ is list:
             el_cls = field.type.__args__[0]
             if type(value) is not list:
                 raise TypeError(
                     'keyword argument "%s" should be a list of %s' % (name, el_cls))
-            parent[name] = [
-                _deserialize(e, el_cls) for e in value
-            ]
+            if attr.has(el_cls):
+                parent[name] = [
+                    _deserialize(e, el_cls) for e in value
+                ]
+            else:
+                parent[name] = value
         elif field.type.__origin__ is dict:
             el_cls = field.type.__args__[1]
             if type(value) is not dict:
@@ -106,9 +113,12 @@ def _deserialize(data, serializer_cls):
                     'keyword argument "%s" should be a dict of %s' % (
                         name, el_cls)
                 )
-            parent[name] = {
-                k: _deserialize(e, el_cls) for k, e in value.items()
-            }
+            if attr.has(el_cls):
+                parent[name] = {
+                    k: _deserialize(e, el_cls) for k, e in value.items()
+                }
+            else:
+                parent[name] = value
         else:
             raise TypeError('unanticipated field type %s' % field.type)
     return serializer_cls(**kwargs)
