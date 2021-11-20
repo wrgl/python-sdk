@@ -103,6 +103,12 @@ class RepositoryTestCase(TestCase):
             self.assertEqual(cfg, Config(
                 receive=Receive(deny_non_fast_forwards=True)
             ))
+            cfg.receive.deny_deletes = True
+            repo.put_config(cfg)
+            cfg = repo.get_config()
+            self.assertEqual(cfg, Config(
+                receive=Receive(deny_non_fast_forwards=True, deny_deletes=True)
+            ))
 
             wrgld.terminate()
             os.remove(f.name)
