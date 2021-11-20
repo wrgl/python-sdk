@@ -6,35 +6,35 @@ import attr
 from wrgl.serialize import json_loads, json_dumps, field_transformer
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Person(object):
-    name = attr.ib(type=str)
-    birth_date = attr.ib(type=str)
-    height = attr.ib(type=int)
-    scores = attr.ib(type=typing.List[int])
+    name: str
+    birth_date: str
+    height: int
+    scores: typing.List[int]
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Remote(object):
-    url = attr.ib(type=str)
+    url: str
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Branch(object):
-    fetch = attr.ib(type=str)
+    fetch: str
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Config(object):
-    user = attr.ib(type=Person)
-    remotes = attr.ib(type=typing.List[Remote])
-    branch = attr.ib(type=typing.Dict[str, Branch])
+    user: Person
+    remotes: typing.List[Remote]
+    branch: typing.Dict[str, Branch]
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Receive(object):
-    deny_non_fast_forwards = attr.ib(type=bool)
-    deny_deletes = attr.ib(type=bool)
+    deny_non_fast_forwards: bool
+    deny_deletes: bool
 
 
 class JSONTestCase(TestCase):

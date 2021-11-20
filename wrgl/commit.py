@@ -4,18 +4,18 @@ import typing
 from wrgl.serialize import field_transformer
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class CommitResult(object):
-    sum = attr.ib(type=str)
-    table = attr.ib(type=str)
+    sum: str
+    table: str
 
 
-@attr.s(field_transformer=field_transformer(globals()))
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Table(object):
-    sum = attr.ib(type=str)
-    columns = attr.ib(type=typing.List[str])
-    pk = attr.ib(type=typing.List[int])
-    rows_count = attr.ib(type=int)
+    sum: str
+    columns: typing.List[str]
+    pk: typing.List[int]
+    rows_count: int
 
 
 @attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
