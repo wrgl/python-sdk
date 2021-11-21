@@ -1,6 +1,5 @@
 import json
 import re
-import importlib
 
 import attr
 

@@ -1,3 +1,5 @@
 __testcache__
 __pycache__
+build
+dist
 *.pyc

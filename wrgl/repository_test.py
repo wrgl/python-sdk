@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest import TestCase
 import io
 import tempfile
@@ -114,7 +115,9 @@ class RepositoryTestCase(TestCase):
             refs = repo.get_refs()
             self.assertEqual(len(refs), 1)
             commit1 = repo.get_commit(refs['heads/main'])
+            self.assertIsInstance(commit1.time, datetime)
             commit2 = repo.get_branch('main')
+            print(commit2)
             self.assertEqual(commit1, commit2)
 
             b = io.StringIO()
@@ -123,11 +126,12 @@ class RepositoryTestCase(TestCase):
             writer.writerow(['1', 'e', 'w'])
             writer.writerow(['2', 'c', 's'])
             cr = repo.commit(
-                'main',
-                'second commit',
-                io.BytesIO(b.getvalue().encode('utf8')),
-                ['a']
+                branch='main',
+                message='second commit',
+                file=io.BytesIO(b.getvalue().encode('utf8')),
+                primary_key=['a']
             )
+            print(cr.sum)
             self.assertIsNotNone(cr.sum)
             self.assertIsNotNone(cr.table)
 
@@ -145,6 +149,7 @@ class RepositoryTestCase(TestCase):
                 ['1', 'e', 'w']
             ])
             dr = repo.diff(cr.sum, commit1.sum)
+            self.assertTrue(dr.primary_key == dr.old_primary_key)
             self.assertGreater(len(dr.row_diff), 0)
 
             wrgld.terminate()
