@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'Wrgl Python SDK'
-copyright = '2021, Khoi Pham'
+copyright = '2021, Wrangle Ltd'
 author = 'Khoi Pham'
 
 # The full version, including alpha/beta/rc tags
