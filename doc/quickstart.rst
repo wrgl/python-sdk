@@ -75,11 +75,11 @@ Common operations
 
    # compare two commits
    diff_result = repo.diff(commit_sum1, commit_sum2)
+   if diff_result.columns != diff_result.old_columns:
+       print('there are column changes')
    if diff_result.primary_key != diff_result.old_primary_key:
        print('there are primary key changes')
-   elif diff_result.row_diff is None:
-       print('there are no changes')
-   else:
+   elif diff_result.row_diff is not None:
        # get added rows
        added_rows = repo.get_rows(table_sum1, [
            r.off1 for r in diff_result.row_diff
