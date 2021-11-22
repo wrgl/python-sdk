@@ -3,3 +3,4 @@ requests-toolbelt==0.9.1
 attrs==21.2.0
 Sphinx==4.1.2
 furo==2021.8.31
+backports-datetime-fromisoformat==1.0.0

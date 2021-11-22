@@ -3,6 +3,7 @@
 
 import json
 import re
+import typing
 
 import attr
 
@@ -25,16 +26,17 @@ def field_transformer(namespace):
         attr.resolve_types(
             cls, globalns=namespace, localns={cls.__name__: cls}, attribs=fields)
         for field in fields:
+            original_type = getattr(field.type, '__origin__', None)
             if type(field.type) is str and field.type == cls.__name__:
                 field = field.evolve(type=cls)
             if type(field.type) is type:
                 validator = attr.validators.instance_of(field.type)
-            elif getattr(field.type, '__origin__', None) is list:
+            elif original_type is list or original_type is typing.List:
                 validator = attr.validators.deep_iterable(
                     member_validator=attr.validators.instance_of(
                         field.type.__args__[0])
                 )
-            elif getattr(field.type, '__origin__', None) is dict:
+            elif original_type is dict or original_type is typing.Dict:
                 validator = attr.validators.deep_mapping(
                     key_validator=attr.validators.instance_of(
                         field.type.__args__[0]),
@@ -43,7 +45,7 @@ def field_transformer(namespace):
                 )
             else:
                 raise TypeError(
-                    'unanticipated type %s (%s)' % (field.type, type(field.type)))
+                    'unanticipated type %s (%s)' % (field.type, getattr(field.type, '__origin__')))
             validator = attr.validators.optional(validator)
             validator = (
                 validator if field.validator is None
@@ -97,7 +99,7 @@ def _deserialize(data, serializer_cls):
                 parent[name] = _deserialize(value, field.type)
             else:
                 parent[name] = value
-        elif field.type.__origin__ is list:
+        elif field.type.__origin__ is list or field.type.__origin__ is typing.List:
             el_cls = field.type.__args__[0]
             if type(value) is not list:
                 raise TypeError(
@@ -108,7 +110,7 @@ def _deserialize(data, serializer_cls):
                 ]
             else:
                 parent[name] = value
-        elif field.type.__origin__ is dict:
+        elif field.type.__origin__ is dict or field.type.__origin__ is typing.Dict:
             el_cls = field.type.__args__[1]
             if type(value) is not dict:
                 raise TypeError(

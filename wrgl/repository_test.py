@@ -63,7 +63,7 @@ class RepositoryTestCase(TestCase):
     def wrgl(self, *args):
         try:
             result = subprocess.run(
-                [self.bin_dir / 'wrgl']+list(args), capture_output=True, check=True)
+                [self.bin_dir / 'wrgl']+list(args), check=True)
         except subprocess.CalledProcessError as e:
             print(e.stdout)
             print(e.stderr)

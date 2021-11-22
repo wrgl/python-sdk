@@ -3,10 +3,13 @@
 
 import datetime
 import typing
+from backports.datetime_fromisoformat import MonkeyPatch
 
 import attr
 
 from wrgl.serialize import field_transformer
+
+MonkeyPatch.patch_fromisoformat()
 
 
 @attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
