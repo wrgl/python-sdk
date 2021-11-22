@@ -34,8 +34,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosectionlabel',
-    'IPython.sphinxext.ipython_console_highlighting',
-    'IPython.sphinxext.ipython_directive',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -48,7 +46,6 @@ exclude_patterns = []
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None),
 }
 
 autodoc_typehints = 'none'
