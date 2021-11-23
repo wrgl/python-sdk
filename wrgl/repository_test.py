@@ -23,7 +23,7 @@ OS = 'darwin'
 
 
 def read_version():
-    pat = re.compile(r'^version = ([\d\.]+)')
+    pat = re.compile(r'^version = (\d+\.\d+\.\d+)')
     with open(pathlib.Path(__file__).parent.parent / 'setup.cfg', 'r') as f:
         for line in f:
             m = pat.match(line)

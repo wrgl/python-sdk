@@ -3,13 +3,11 @@
 
 import datetime
 import typing
-from backports.datetime_fromisoformat import MonkeyPatch
 
 import attr
 
+from wrgl.isoformat import fromisoformat
 from wrgl.serialize import field_transformer
-
-MonkeyPatch.patch_fromisoformat()
 
 
 @attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
@@ -58,7 +56,7 @@ class Commit(object):
     message: str
     table: Table
     time: datetime.datetime = attr.ib(
-        converter=attr.converters.optional(datetime.datetime.fromisoformat)
+        converter=attr.converters.optional(fromisoformat)
     )
     parents: typing.List[str]
     parent_commits: "typing.Dict[str, Commit]"

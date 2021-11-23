@@ -25,7 +25,14 @@ There are two ways to initialize:
    from wrgl import Repository
 
    # read access token from environment variable
-   repo = Repository('https://my-repository', os.getenv('REPO_ACCESS_TOKEN'))
+   repo = Repository(
+       # replace "my-repository" with wrgld host
+       # if the repository is hosted at wrglhub then it should have the form
+       # https://hub.wrgl.co/api/users/{username}/repos/{reponame}/
+       'https://my-repository',
+       # read access token from environment variable
+       os.getenv('REPO_ACCESS_TOKEN')
+   )
 
 - If you have email/password and want to authenticate with that and/or want to acquite an access token:
 

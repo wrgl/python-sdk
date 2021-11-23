@@ -90,7 +90,7 @@ def _deserialize(data, serializer_cls):
     ]
     data_stack = [
         (kwargs, k, fields_dict[k], v)
-        for k, v in data
+        for k, v in data if k != 'meta'
     ]
     while len(data_stack) > 0:
         parent, name, field, value = data_stack.pop()

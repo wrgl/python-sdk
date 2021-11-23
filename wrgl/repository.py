@@ -28,6 +28,7 @@ class Repository(object):
             If it is a valid token then you don't need to run :func:`Repository.authenticate`.
         """
         self.endpoint = endpoint.rstrip("/")
+        self._is_hub_repo = self.endpoint.startswith("https://hub.wrgl.co/")
         self._id_token = id_token
 
     def authenticate(self, email: str, password: str) -> str:
@@ -40,7 +41,7 @@ class Repository(object):
 
         :rtype: str
         """
-        if self.endpoint.startswith("https://hub.wrgl.co/"):
+        if self._is_hub_repo:
             endpoint = "https://hub.wrgl.co/api/authenticate/"
         else:
             endpoint = self.endpoint + "/authenticate/"
