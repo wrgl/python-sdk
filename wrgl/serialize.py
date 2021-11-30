@@ -20,6 +20,14 @@ def to_snake_case(s):
     return word_break_pattern.sub(r'\1_\2', s).lower()
 
 
+def none_field_transformer(cls, fields):
+    return [
+        field if field.default != attr.NOTHING else field.evolve(
+            default=None)
+        for field in fields
+    ]
+
+
 def field_transformer(namespace):
     def transform(cls, fields):
         results = []

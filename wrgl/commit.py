@@ -35,6 +35,16 @@ class Table(object):
     pk: typing.List[int]
     rows_count: int
 
+    @property
+    def primary_key(self) -> typing.List[str]:
+        """Returns primary-key columns of the first commit
+
+        :rtype: list[str]
+        """
+        if self.pk is None:
+            return []
+        return [self.columns[idx] for idx in self.pk]
+
 
 @attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class Commit(object):
