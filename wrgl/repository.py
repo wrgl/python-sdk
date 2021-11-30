@@ -11,6 +11,7 @@ import csv
 import io
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
+from wrgl import diffreader
 from wrgl.commit import Commit, CommitResult, Table, CommitTree
 from wrgl.diff import DiffResult
 from wrgl.serialize import json_dumps, json_loads
@@ -232,7 +233,7 @@ class Repository(object):
         for row in csv.reader(io.StringIO(r.text), dialect='unix'):
             yield row
 
-    def diff(self, sum1, sum2) -> DiffResult:
+    def diff(self, sum1: str, sum2: str) -> DiffResult:
         """Compares two commits and returns their differences.
 
         :param str sum1: checksum of the first commit
@@ -244,3 +245,6 @@ class Repository(object):
             "/diff/%s/%s/" % (sum1, sum2)
         )
         return json_loads(r.content, DiffResult)
+
+    def diff_reader(self, sum1: str, sum2: str) -> diffreader.DiffReader:
+        return diffreader.DiffReader(self, sum1, sum2)

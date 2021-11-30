@@ -10,5 +10,5 @@ __all__ = [
     "Config", "User", "Remote", "Branch", "Receive", "Auth", "Pack",
     "Commit", "CommitResult", "CommitTree", "Table",
     "DiffResult", "RowDiff",
-    "Repository"
+    "Repository",
 ]
