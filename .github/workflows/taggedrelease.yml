@@ -33,18 +33,18 @@ jobs:
             ${{ runner.os }}-${{ matrix.python-version }}-
       - name: Wrgl version
         id: wrgl_version
-        uses: ashley-taylor/regex-property-action@v1.2
+        uses: frabert/replace-string-action@v2.0
         with:
-          value: ${{ github.ref }}
-          regex: "^refs/tags/(\\d+\\.\\d+\\.\\d+).*$"
-          replacement: "$1"
+          pattern: '^refs/tags/(\\d+\\.\\d+\\.\\d+).*$'
+          string: ${{ github.ref }}
+          replace-with: "$1"
       - name: Cache test binary
         uses: actions/cache@v2
         with:
-          path: wrgl/__testcache__/${{ steps.wrgl_version.outputs.value }}
-          key: testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.value }}
+          path: wrgl/__testcache__/${{ steps.wrgl_version.outputs.replaced }}
+          key: testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.replaced }}
           restore-keys: |
-            testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.value }}
+            testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.replaced }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
