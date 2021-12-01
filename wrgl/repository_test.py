@@ -3,6 +3,7 @@
 
 from datetime import datetime
 import typing
+import platform
 import _csv
 from unittest import TestCase
 from contextlib import contextmanager
@@ -23,8 +24,6 @@ from wrgl.config import Config, Receive
 from wrgl.diffreader import ColumnChanges
 from wrgl.repository import Repository
 
-OS = 'darwin'
-
 
 def read_version():
     pat = re.compile(r'^version = (\d+\.\d+\.\d+)')
@@ -38,6 +37,7 @@ def read_version():
 
 def download_wrgl(version):
     ver_dir = pathlib.Path(__file__).parent / '__testcache__' / version
+    OS = platform.system().lower()
     if not ver_dir.exists():
         ver_dir.mkdir(parents=True)
         url = "https://github.com/wrgl/wrgl/releases/download/v%s/wrgl-%s-amd64.tar.gz" % (
