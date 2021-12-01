@@ -83,7 +83,9 @@ class RepositoryTestCase(TestCase):
             [self.bin_dir / 'wrgld', self.repo_dir.name, "-p", port], stdout=subprocess.PIPE)
         time.sleep(1)
         yield "http://localhost:%s" % port
+        proc.stdout.close()
         proc.terminate()
+        proc.wait()
 
     def setUp(self):
         super().setUp()
