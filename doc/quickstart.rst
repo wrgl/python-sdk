@@ -75,7 +75,7 @@ Common operations
     import csv
     with open('output.csv', 'w') as f:
         writer = csv.writer(f)
-        for row in repo.get_blocks(commit.table.sum):
+        for row in repo.get_blocks(result.sum):
             writer.writerow(row)
 
     # compare two commits

@@ -186,10 +186,16 @@ class RepositoryTestCase(TestCase):
 
             tbl = repo.get_table(cr.table)
             self.assertEqual(tbl.columns, ['a', 'b', 'c'])
-            self.assertEqual(list(repo.get_blocks(cr.table)), [
+            self.assertEqual(list(repo.get_blocks(cr.sum)), [
                 ['a', 'b', 'c'], ['1', 'e', 'w'], ['2', 'c', 's']
             ])
-            self.assertEqual(list(repo.get_rows(cr.table, [0])), [
+            self.assertEqual(list(repo.get_table_blocks(cr.table)), [
+                ['a', 'b', 'c'], ['1', 'e', 'w'], ['2', 'c', 's']
+            ])
+            self.assertEqual(list(repo.get_rows(cr.sum, [0])), [
+                ['1', 'e', 'w']
+            ])
+            self.assertEqual(list(repo.get_table_rows(cr.table, [0])), [
                 ['1', 'e', 'w']
             ])
             dr = repo.diff(cr.sum, commit1.sum)

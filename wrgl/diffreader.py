@@ -71,7 +71,7 @@ class RowIterator(object):
         except StopIteration:
             if self._off >= len(self):
                 raise StopIteration()
-            self._batch = self._repo.get_rows(
+            self._batch = self._repo.get_table_rows(
                 self._tbl_sum,
                 self._offsets[self._off:self._off + self._fetch_size]
             )
@@ -153,10 +153,10 @@ class ModifiedRowIterator(object):
                 raise StopIteration()
             offsets = self._offsets[self._off:self._off + self._fetch_size]
             self._batch = itertools.zip_longest(
-                self._repo.get_rows(
+                self._repo.get_table_rows(
                     self._tbl_sum1, [i for i, _ in offsets]
                 ),
-                self._repo.get_rows(
+                self._repo.get_table_rows(
                     self._tbl_sum2, [i for _, i in offsets]
                 )
             )
