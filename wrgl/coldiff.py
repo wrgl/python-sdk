@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright © 2021 Wrangle Ltd
+
 import attr
 import typing
 import math
@@ -7,7 +10,11 @@ from wrgl.serialize import none_field_transformer
 
 
 def longest_increasing_list(values: typing.List[int]) -> typing.List[int]:
-    """returns indices of longest increasing values
+    """Returns indices of longest increasing values
+
+    :param list[int] values: arbitrary integers
+
+    :rtype: list[int]
     """
     @attr.s(auto_attribs=True)
     class Node(object):

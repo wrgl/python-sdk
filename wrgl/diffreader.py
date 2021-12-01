@@ -1,5 +1,9 @@
-import typing
+# SPDX-License-Identifier: Apache-2.0
+# Copyright © 2021 Wrangle Ltdimport typing
+
 import itertools
+import typing
+import attr
 
 from wrgl import repository
 from wrgl.commit import Table
@@ -7,55 +11,85 @@ from wrgl.diff import DiffResult
 from wrgl.coldiff import ColDiff
 
 
-RowArranger = typing.Callable[
-    [typing.List[str]], typing.List[str]
-]
+class RowIterator(object):
+    """Iterates over rows with specified offsets of a table.
 
+    Each row is returned as a list of strings.
 
-class RowReader(object):
-    _repo: repository.Repository
+    :var list[str] columns: column names
+    :var list[str] primary_key: primary key
+    """
+    _repo: "repository.Repository"
     _tbl_sum: str
-    _offsets: typing.List
+    _offsets: typing.List[int]
     _off: int
-    _rearrange_row: RowArranger
     _fetch_size: int
 
     columns: typing.List[str]
+    primary_key: typing.List[str]
 
     def __init__(
             self,
-            repo: repository.Repository,
+            repo: "repository.Repository",
             tbl_sum: str,
             columns: typing.List[str],
-            rearrange_row: RowArranger,
+            primary_key: typing.List[str],
             fetch_size: int = 100
     ) -> None:
+        """
+        :param Repository repo: the repo handle
+        :param str tbl_sum: checksum of the table the rows belong to
+        :param list[str] columns: column names
+        :param list[str] primary_key: primary key
+        :param int fetch_size: number of rows to fetch for each batch
+        """
         self._repo = repo
         self._tbl_sum = tbl_sum
         self._offsets = []
-        self._off = 0
-        self.columns = columns
-        self._rearrange_row = rearrange_row
         self._fetch_size = fetch_size
+        self.columns = columns
+        self.primary_key = primary_key
 
     def add_offset(self, offset: int) -> None:
+        """Add a single row offset
+
+        :param int offset: row offset
+        """
         self._offsets.append(offset)
 
     def __len__(self):
         return len(self._offsets)
 
-    def data(self) -> typing.Iterator[typing.List[str]]:
-        while self._off < len(self._offsets):
-            for row in self._repo.get_rows(
-                    self._tbl_sum,
-                    self._offsets[self._off:self._off + self._fetch_size]
-            ):
-                yield self._rearrange_row(row)
+    def __iter__(self):
+        self._off = 0
+        self._batch = (i for i in [])
+        return self
+
+    def __next__(self) -> typing.List[str]:
+        try:
+            return next(self._batch)
+        except StopIteration:
+            if self._off >= len(self):
+                raise StopIteration()
+            self._batch = self._repo.get_rows(
+                self._tbl_sum,
+                self._offsets[self._off:self._off + self._fetch_size]
+            )
             self._off += self._fetch_size
+            return next(self._batch)
 
 
-class ModifiedRowReader(object):
-    _repo: repository.Repository
+class ModifiedRowIterator(object):
+    """Iterates over row pairs with specifies offsets from a pair of tables
+
+    Each row is returned as a list of tuple of two values: `(newer_value, older_value)`.
+    If either cell is missing (because the column is missing in one of the tables) then
+    one of the values is None.
+
+    :var list[str] columns: column names
+    :var list[str] primary_key: primary key
+    """
+    _repo: "repository.Repository"
     _tbl_sum1: str
     _tbl_sum2: str
     _cd: ColDiff
@@ -64,16 +98,27 @@ class ModifiedRowReader(object):
     _off: int
 
     columns: typing.List[str]
+    primary_key: typing.List[str]
 
     def __init__(
             self,
-            repo: repository.Repository,
+            repo: "repository.Repository",
             tbl_sum1: str,
             tbl_sum2: str,
-            columns: typing.List[str],
             cd: ColDiff,
+            columns: typing.List[str],
+            primary_key: typing.List[str],
             fetch_size: int = 100
     ) -> None:
+        """
+        :param Repository repo: the repo handle
+        :param str tbl_sum1: checksum of the newer table
+        :param str tbl_sum2: checksum of the older table
+        :param ColDiff cd: column differences
+        :param list[str] columns: column names
+        :param list[str] primary_key: primary key
+        :param int fetch_size: number of rows to fetch for each batch
+        """
         self._repo = repo
         self._tbl_sum1 = tbl_sum1
         self._tbl_sum2 = tbl_sum2
@@ -82,46 +127,89 @@ class ModifiedRowReader(object):
         self._offsets = []
         self._off = 0
         self.columns = columns
+        self.primary_key = primary_key
 
     def add_offset(self, offset1: int, offset2: int) -> None:
+        """Add a single row offset
+
+        :param int offset1: row offset for the newer table
+        :param int offset2: row offset for the older table
+        """
         self._offsets.append((offset1, offset2))
 
     def __len__(self):
         return len(self._offsets)
 
-    def data(self) -> typing.Iterator[typing.List[str]]:
-        while self._off < len(self._offsets):
+    def __iter__(self):
+        self._off = 0
+        self._batch = (i for i in [])
+        return self
+
+    def __next__(self) -> typing.List[str]:
+        try:
+            row1, row2 = next(self._batch)
+        except StopIteration:
+            if self._off >= len(self):
+                raise StopIteration()
             offsets = self._offsets[self._off:self._off + self._fetch_size]
-            rows1 = self._repo.get_rows(
-                self._tbl_sum1, [i for i, _ in offsets]
+            self._batch = itertools.zip_longest(
+                self._repo.get_rows(
+                    self._tbl_sum1, [i for i, _ in offsets]
+                ),
+                self._repo.get_rows(
+                    self._tbl_sum2, [i for _, i in offsets]
+                )
             )
-            rows2 = self._repo.get_rows(
-                self._tbl_sum2, [i for _, i in offsets]
-            )
-            for row1, row2 in itertools.zip_longest(rows1, rows2):
-                yield self._cd.combine_rows(0, row1, row2)
             self._off += self._fetch_size
+            row1, row2 = next(self._batch)
+        return self._cd.combine_rows(0, row1, row2)
 
 
+@attr.s(auto_attribs=True)
 class ColumnChanges(object):
+    """Represents changes in column names.
+
+    :var list[str] new_values: new columns
+    :var list[str] old_values: old columns
+    :var set[str] unchanged: columns that are present in both versions
+    :var set[str] added: columns that appear in newer version but not in older version
+    :var set[str] removed: columns that appear in older version but not in newer version
+    """
     new_values: typing.List[str]
     old_values: typing.List[str]
-    unchanged: typing.List[str]
-    added: typing.List[str]
-    removed: typing.List[str]
+    unchanged: typing.Set[str]
+    added: typing.Set[str]
+    removed: typing.Set[str]
 
-    def __init__(self, new_cols: typing.List[str], old_cols: typing.List[str]) -> None:
-        self.new_values = new_cols
-        self.old_values = old_cols
-        old_set = set(new_cols)
-        new_set = set(old_cols)
-        self.unchanged = list(old_set & new_set)
-        self.added = list(new_set - old_set)
-        self.removed = list(old_set - new_set)
+    @classmethod
+    def from_new_old_columns(cls, new_cols: typing.List[str], old_cols: typing.List[str]) -> "ColumnChanges":
+        """Creates a new instance by comparing two column lists
+
+        :param list[str] new_cols: newer columns
+        :param list[str] old_cols: older columns
+
+        :rtype: ColumnChanges
+        """
+        new_values = new_cols
+        old_values = old_cols
+        old_set = set(old_cols)
+        new_set = set(new_cols)
+        unchanged = old_set & new_set
+        added = new_set - old_set
+        removed = old_set - new_set
+        return cls(new_values, old_values, unchanged, added, removed)
 
 
 class DiffReader(object):
-    _repo: repository.Repository
+    """Interprets the changes between two commits.
+
+    :var ColumnChanges column_changes: column changes
+    :var ColumnChanges pk_changes: primary key changes
+    :var RowIterator added_rows: iterator for added rows
+    :var RowIterator removed_rows: iterator for removed rows
+    :var ModifiedRowIterator modified_rows: iterator for modified rows
+    """
+    _repo: "repository.Repository"
     _com_sum1: str
     _com_sum2: str
     _dr: DiffResult
@@ -129,12 +217,16 @@ class DiffReader(object):
 
     column_changes: ColumnChanges
     pk_changes: ColumnChanges
-    columns: typing.List[str]
-    added_rows: RowReader or None = None
-    removed_rows: RowReader or None = None
-    modified_rows: ModifiedRowReader or None = None
+    added_rows: RowIterator or None = None
+    removed_rows: RowIterator or None = None
+    modified_rows: ModifiedRowIterator or None = None
 
-    def __init__(self, repo: repository.Repository, com_sum1: str, com_sum2: str) -> None:
+    def __init__(self, repo: "repository.Repository", com_sum1: str, com_sum2: str) -> None:
+        """
+        :param Repository repo: the repo handle
+        :param str com_sum1: checksum of the first (newer) commit
+        :param str com_sum2: checksum of the second (older) commit
+        """
         self._repo = repo
         self._com_sum1 = com_sum1
         self._com_sum2 = com_sum2
@@ -142,32 +234,34 @@ class DiffReader(object):
         old_tbl = Table(columns=self._dr.old_columns, pk=self._dr.old_pk)
         new_tbl = Table(columns=self._dr.columns, pk=self._dr.pk)
         self._cd = ColDiff(old_tbl, new_tbl)
-        self.column_changes = ColumnChanges(
-            self._dr.columns, self._dr.old_columns)
-        self.pk_changes = ColumnChanges(
-            new_tbl.primary_key, old_tbl.primary_key)
-        self.columns = [
-            col.name for col in self._cd.columns
-        ]
+        self.column_changes = ColumnChanges.from_new_old_columns(
+            self._dr.columns, self._dr.old_columns
+        )
+        self.pk_changes = ColumnChanges.from_new_old_columns(
+            new_tbl.primary_key, old_tbl.primary_key
+        )
         if old_tbl.primary_key == new_tbl.primary_key:
-            self.added_rows = RowReader(
+            self.added_rows = RowIterator(
                 repo=self._repo,
                 tbl_sum=self._dr.table_sum,
-                columns=self.columns,
-                rearrange_row=lambda row: self._cd.rearrange_row(0, row)
+                columns=new_tbl.columns,
+                primary_key=new_tbl.primary_key
             )
-            self.removed_rows = RowReader(
+            self.removed_rows = RowIterator(
                 repo=self._repo,
                 tbl_sum=self._dr.old_table_sum,
-                columns=self.columns,
-                rearrange_row=lambda row: self._cd.rearrange_base_row(row)
+                columns=old_tbl.columns,
+                primary_key=old_tbl.primary_key
             )
-            self.modified_rows = ModifiedRowReader(
+            self.modified_rows = ModifiedRowIterator(
                 repo=self._repo,
                 tbl_sum1=self._dr.table_sum,
                 tbl_sum2=self._dr.old_table_sum,
-                columns=self.columns,
                 cd=self._cd,
+                columns=[
+                    col.name for col in self._cd.columns
+                ],
+                primary_key=new_tbl.primary_key
             )
             for rd in self._dr.row_diff:
                 if rd.off1 is None:

@@ -247,4 +247,14 @@ class Repository(object):
         return json_loads(r.content, DiffResult)
 
     def diff_reader(self, sum1: str, sum2: str) -> diffreader.DiffReader:
+        """Compares two commits and interpret their differences.
+
+        This method is higher level than :func:`Repository.diff` and should
+        be preferred for 99% of use cases.
+
+        :param str sum1: checksum of the first commit
+        :param str sum2: checksum of the second commit
+
+        :rtype: DiffReader
+        """
         return diffreader.DiffReader(self, sum1, sum2)

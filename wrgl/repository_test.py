@@ -2,7 +2,10 @@
 # Copyright © 2021 Wrangle Ltd
 
 from datetime import datetime
+import typing
+import _csv
 from unittest import TestCase
+from contextlib import contextmanager
 import io
 import tempfile
 import pathlib
@@ -17,6 +20,7 @@ import csv
 import requests
 
 from wrgl.config import Config, Receive
+from wrgl.diffreader import ColumnChanges
 from wrgl.repository import Repository
 
 OS = 'darwin'
@@ -55,6 +59,8 @@ def get_open_port():
 
 
 class RepositoryTestCase(TestCase):
+    maxDiff = None
+
     @classmethod
     def setUpClass(cls):
         cls.version = read_version()
@@ -63,47 +69,64 @@ class RepositoryTestCase(TestCase):
     def wrgl(self, *args):
         try:
             result = subprocess.run(
-                [self.bin_dir / 'wrgl']+list(args), check=True)
+                [self.bin_dir / 'wrgl']+list(args)+["--wrgl-dir", self.repo_dir.name], check=True)
         except subprocess.CalledProcessError as e:
             print(e.stdout)
             print(e.stderr)
             raise
         return result
 
-    def start_wrgld(self, *args):
+    @contextmanager
+    def run_wrgld(self) -> typing.Iterator[str]:
+        port = get_open_port()
         proc = subprocess.Popen(
-            [self.bin_dir / 'wrgld']+list(args), stdout=subprocess.PIPE)
+            [self.bin_dir / 'wrgld', self.repo_dir.name, "-p", port], stdout=subprocess.PIPE)
         time.sleep(1)
-        return proc
+        yield "http://localhost:%s" % port
+        proc.terminate()
+
+    def setUp(self):
+        super().setUp()
+        self.repo_dir = tempfile.TemporaryDirectory()
+        self.wrgl("init")
+        self.email = "johndoe@domain.com"
+        self.name = "John Doe"
+        self.password = "password"
+        self.wrgl(
+            "config", "set", "receive.denyNonFastForwards", "true"
+        )
+        self.wrgl(
+            "auth", "add-user", self.email, "--name", self.name, "--password", self.password
+        )
+        self.wrgl(
+            "auth", "add-scope", self.email, "--all"
+        )
+
+    def tearDown(self) -> None:
+        self.repo_dir.cleanup()
+        return super().tearDown()
+
+    @contextmanager
+    def commit(self, branch: str, message: str, primary_key: typing.List[str]) -> typing.Iterator["_csv._writer"]:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+            writer = csv.writer(f)
+            yield writer
+        try:
+            self.wrgl(
+                "commit", branch, f.name, message, "-p", ",".join(primary_key)
+            )
+        finally:
+            os.remove(f.name)
 
     def test_commit(self):
-        with tempfile.TemporaryDirectory() as repo_dir:
-            self.wrgl("init", "--wrgl-dir", repo_dir)
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-                writer = csv.writer(f)
-                writer.writerow(['a', 'b', 'c'])
-                writer.writerow(['1', 'q', 'w'])
-                writer.writerow(['2', 'a', 's'])
-            self.wrgl(
-                "commit", "--wrgl-dir", repo_dir, "main", f.name, "initial commit", "-p", "a"
-            )
-            email = "johndoe@domain.com"
-            name = "John Doe"
-            password = "password"
-            self.wrgl(
-                "config", "--wrgl-dir", repo_dir, "set", "receive.denyNonFastForwards", "true"
-            )
-            self.wrgl(
-                "auth", "--wrgl-dir", repo_dir, "add-user", email, "--name", name, "--password", password
-            )
-            self.wrgl(
-                "auth", "--wrgl-dir", repo_dir, "add-scope", email, "--all"
-            )
-            port = get_open_port()
-            wrgld = self.start_wrgld(repo_dir, "-p", port)
+        with self.commit("main", "initial commit", ["a"]) as writer:
+            writer.writerow(['a', 'b', 'c'])
+            writer.writerow(['1', 'q', 'w'])
+            writer.writerow(['2', 'a', 's'])
 
-            repo = Repository("http://localhost:%s" % port)
-            repo.authenticate(email, password)
+        with self.run_wrgld() as url:
+            repo = Repository(url)
+            repo.authenticate(self.email, self.password)
             cfg = repo.get_config()
             self.assertEqual(cfg, Config(
                 receive=Receive(deny_non_fast_forwards=True)
@@ -134,7 +157,6 @@ class RepositoryTestCase(TestCase):
                 file=io.BytesIO(b.getvalue().encode('utf8')),
                 primary_key=['a']
             )
-            print(cr.sum)
             self.assertIsNotNone(cr.sum)
             self.assertIsNotNone(cr.table)
 
@@ -155,5 +177,59 @@ class RepositoryTestCase(TestCase):
             self.assertTrue(dr.primary_key == dr.old_primary_key)
             self.assertGreater(len(dr.row_diff), 0)
 
-            wrgld.terminate()
-            os.remove(f.name)
+    def test_diff_reader(self):
+        with self.commit("main", "initial commit", ["a"]) as writer:
+            writer.writerow(['a', 'b', 'c', 'd'])
+            writer.writerow(['1', 'q', 'w', 'e'])
+            writer.writerow(['2', 'a', 's', 'd'])
+            writer.writerow(['3', 'z', 'x', 'c'])
+
+        with self.commit("main", "second commit", ["a"]) as writer:
+            writer.writerow(['a', 'b', 'c', 'e'])
+            writer.writerow(['1', 'q', 'u', 'r'])
+            writer.writerow(['2', 'a', 's', 'f'])
+            writer.writerow(['4', 'y', 'u', 'i'])
+
+        with self.run_wrgld() as url:
+            repo = Repository(url)
+            token = repo.authenticate(self.email, self.password)
+
+        with self.run_wrgld() as url:
+            repo = Repository(url, token)
+            com_tree = repo.get_commit_tree("heads/main", 2)
+            dr = repo.diff_reader(com_tree.sum, com_tree.root.parents[0])
+            self.assertEqual(dr.column_changes, ColumnChanges(
+                new_values=['a', 'b', 'c', 'e'],
+                old_values=['a', 'b', 'c', 'd'],
+                unchanged=set(['a', 'b', 'c']),
+                added=set(['e']),
+                removed=set(['d'])
+            ))
+            self.assertEqual(dr.pk_changes, ColumnChanges(
+                new_values=['a'],
+                old_values=['a'],
+                unchanged=set(['a']),
+                added=set([]),
+                removed=set([])
+            ))
+            self.assertEqual(len(dr.added_rows), 1)
+            self.assertEqual(dr.added_rows.columns, ['a', 'b', 'c', 'e'])
+            self.assertEqual(dr.added_rows.primary_key, ['a'])
+            self.assertEqual(list(dr.added_rows), [
+                ['4', 'y', 'u', 'i']
+            ])
+            self.assertEqual(len(dr.removed_rows), 1)
+            self.assertEqual(dr.removed_rows.columns, ['a', 'b', 'c', 'd'])
+            self.assertEqual(dr.removed_rows.primary_key, ['a'])
+            self.assertEqual(list(dr.removed_rows), [
+                ['3', 'z', 'x', 'c']
+            ])
+            self.assertEqual(len(dr.modified_rows), 2)
+            self.assertEqual(
+                dr.modified_rows.columns, ['a', 'b', 'c', 'd', 'e']
+            )
+            self.assertEqual(dr.modified_rows.primary_key, ['a'])
+            self.assertEqual(list(dr.modified_rows), [
+                [('1', '1'), ('q', 'q'), ('u', 'w'), (None, 'e'), ('r', None)],
+                [('2', '2'), ('a', 'a'), ('s', 's'), (None, 'd'), ('f', None)]
+            ])

@@ -1,5 +1,3 @@
-:github_url: https://github.com/wrgl/python-sdk/blob/main/doc/quickstart.rst
-
 Quickstart
 ==========
 
