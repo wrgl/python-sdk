@@ -20,7 +20,7 @@ import csv
 
 import requests
 
-from wrgl.config import Config, Receive
+from wrgl.config import Config, Receive, User
 from wrgl.diffreader import ColumnChanges
 from wrgl.repository import Repository
 
@@ -98,6 +98,12 @@ class RepositoryTestCase(TestCase):
             "config", "set", "receive.denyNonFastForwards", "true"
         )
         self.wrgl(
+            "config", "set", "user.email", self.email
+        )
+        self.wrgl(
+            "config", "set", "user.name", self.name
+        )
+        self.wrgl(
             "auth", "add-user", self.email, "--name", self.name, "--password", self.password
         )
         self.wrgl(
@@ -131,13 +137,24 @@ class RepositoryTestCase(TestCase):
             repo.authenticate(self.email, self.password)
             cfg = repo.get_config()
             self.assertEqual(cfg, Config(
-                receive=Receive(deny_non_fast_forwards=True)
+                receive=Receive(deny_non_fast_forwards=True),
+                user=User(
+                    name=self.name,
+                    email=self.email
+                )
             ))
             cfg.receive.deny_deletes = True
             repo.put_config(cfg)
             cfg = repo.get_config()
             self.assertEqual(cfg, Config(
-                receive=Receive(deny_non_fast_forwards=True, deny_deletes=True)
+                receive=Receive(
+                    deny_non_fast_forwards=True,
+                    deny_deletes=True
+                ),
+                user=User(
+                    name=self.name,
+                    email=self.email
+                )
             ))
 
             refs = repo.get_refs()

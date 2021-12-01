@@ -31,16 +31,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.python-version }}-pip-
             ${{ runner.os }}-${{ matrix.python-version }}-
-      - name: Set wrgl version
+      - name: Wrgl version
         id: wrgl_version
-        run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | sed -E 's/refs\/tags\/(\d+\.\d+\.\d+).*/\1/g')
+        uses: ashley-taylor/regex-property-action@v1.2
+        with:
+          value: ${{ github.ref }}
+          regex: "^refs/tags/(\\d+\\.\\d+\\.\\d+).*$"
+          replacement: "$1"
       - name: Cache test binary
         uses: actions/cache@v2
         with:
-          path: wrgl/__testcache__/${{ steps.wrgl_version.outputs.VERSION }}
-          key: testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.VERSION }}
+          path: wrgl/__testcache__/${{ steps.wrgl_version.outputs.value }}
+          key: testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.value }}
           restore-keys: |
-            testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.VERSION }}
+            testcache-${{ runner.os }}-${{ steps.wrgl_version.outputs.value }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
