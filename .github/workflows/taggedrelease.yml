@@ -35,7 +35,7 @@ jobs:
         id: wrgl_version
         uses: frabert/replace-string-action@v2.0
         with:
-          pattern: '^refs/tags/(\\d+\\.\\d+\\.\\d+).*$'
+          pattern: '^refs/tags/(\d+\.\d+\.\d+).*$'
           string: ${{ github.ref }}
           replace-with: "$1"
       - name: Cache test binary
