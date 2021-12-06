@@ -290,7 +290,7 @@ class Repository(object):
         )
         return json_loads(r.content, DiffResult)
 
-    def diff_reader(self, sum1: str, sum2: str) -> diffreader.DiffReader:
+    def diff_reader(self, sum1: str, sum2: str, fetch_size: int = 100) -> diffreader.DiffReader:
         """Compares two commits and interpret their differences.
 
         This method is higher level than :func:`Repository.diff` and should
@@ -301,4 +301,4 @@ class Repository(object):
 
         :rtype: DiffReader
         """
-        return diffreader.DiffReader(self, sum1, sum2)
+        return diffreader.DiffReader(self, sum1, sum2, fetch_size)

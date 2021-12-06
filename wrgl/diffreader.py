@@ -209,11 +209,6 @@ class DiffReader(object):
     :var RowIterator removed_rows: iterator for removed rows
     :var ModifiedRowIterator modified_rows: iterator for modified rows
     """
-    _repo: "repository.Repository"
-    _com_sum1: str
-    _com_sum2: str
-    _dr: DiffResult
-    _cd: ColDiff
 
     column_changes: ColumnChanges
     pk_changes: ColumnChanges
@@ -221,49 +216,49 @@ class DiffReader(object):
     removed_rows: RowIterator or None = None
     modified_rows: ModifiedRowIterator or None = None
 
-    def __init__(self, repo: "repository.Repository", com_sum1: str, com_sum2: str) -> None:
+    def __init__(self, repo: "repository.Repository", com_sum1: str, com_sum2: str, fetch_size: int = 100) -> None:
         """
         :param Repository repo: the repo handle
         :param str com_sum1: checksum of the first (newer) commit
         :param str com_sum2: checksum of the second (older) commit
         """
-        self._repo = repo
-        self._com_sum1 = com_sum1
-        self._com_sum2 = com_sum2
-        self._dr = self._repo.diff(com_sum1, com_sum2)
-        old_tbl = Table(columns=self._dr.old_columns, pk=self._dr.old_pk)
-        new_tbl = Table(columns=self._dr.columns, pk=self._dr.pk)
-        self._cd = ColDiff(old_tbl, new_tbl)
+        dr = repo.diff(com_sum1, com_sum2)
+        old_tbl = Table(columns=dr.old_columns, pk=dr.old_pk)
+        new_tbl = Table(columns=dr.columns, pk=dr.pk)
+        cd = ColDiff(old_tbl, new_tbl)
         self.column_changes = ColumnChanges.from_new_old_columns(
-            self._dr.columns, self._dr.old_columns
+            dr.columns, dr.old_columns
         )
         self.pk_changes = ColumnChanges.from_new_old_columns(
             new_tbl.primary_key, old_tbl.primary_key
         )
         if old_tbl.primary_key == new_tbl.primary_key:
             self.added_rows = RowIterator(
-                repo=self._repo,
-                tbl_sum=self._dr.table_sum,
+                repo=repo,
+                tbl_sum=dr.table_sum,
                 columns=new_tbl.columns,
-                primary_key=new_tbl.primary_key
+                primary_key=new_tbl.primary_key,
+                fetch_size=fetch_size
             )
             self.removed_rows = RowIterator(
-                repo=self._repo,
-                tbl_sum=self._dr.old_table_sum,
+                repo=repo,
+                tbl_sum=dr.old_table_sum,
                 columns=old_tbl.columns,
-                primary_key=old_tbl.primary_key
+                primary_key=old_tbl.primary_key,
+                fetch_size=fetch_size
             )
             self.modified_rows = ModifiedRowIterator(
-                repo=self._repo,
-                tbl_sum1=self._dr.table_sum,
-                tbl_sum2=self._dr.old_table_sum,
-                cd=self._cd,
+                repo=repo,
+                tbl_sum1=dr.table_sum,
+                tbl_sum2=dr.old_table_sum,
+                cd=cd,
                 columns=[
-                    col.name for col in self._cd.columns
+                    col.name for col in cd.columns
                 ],
-                primary_key=new_tbl.primary_key
+                primary_key=new_tbl.primary_key,
+                fetch_size=fetch_size
             )
-            for rd in self._dr.row_diff:
+            for rd in dr.row_diff:
                 if rd.off1 is None:
                     self.removed_rows.add_offset(rd.off2)
                 elif rd.off2 is None:
