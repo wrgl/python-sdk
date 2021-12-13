@@ -258,3 +258,39 @@ class RepositoryTestCase(TestCase):
                 [('1', '1'), ('q', 'q'), ('u', 'w'), (None, 'e'), ('r', None)],
                 [('2', '2'), ('a', 'a'), ('s', 's'), (None, 'd'), ('f', None)]
             ])
+
+    def test_diff_reader_no_changes(self):
+        with self.commit("main", "initial commit", ["a"]) as writer:
+            writer.writerow(['a', 'b', 'c', 'd'])
+            writer.writerow(['1', 'q', 'w', 'e'])
+            writer.writerow(['2', 'a', 's', 'd'])
+            writer.writerow(['3', 'z', 'x', 'c'])
+
+        with self.commit("main", "second commit", ["a"]) as writer:
+            writer.writerow(['a', 'b', 'c', 'd'])
+            writer.writerow(['1', 'q', 'w', 'e'])
+            writer.writerow(['2', 'a', 's', 'd'])
+            writer.writerow(['3', 'z', 'x', 'c'])
+
+        with self.run_wrgld() as url:
+            repo = Repository(url)
+            repo.authenticate(self.email, self.password)
+            com_tree = repo.get_commit_tree("heads/main", 2)
+            dr = repo.diff_reader(com_tree.sum, com_tree.root.parents[0])
+            self.assertEqual(dr.column_changes, ColumnChanges(
+                new_values=['a', 'b', 'c', 'd'],
+                old_values=['a', 'b', 'c', 'd'],
+                unchanged=set(['a', 'b', 'c', 'd']),
+                added=set([]),
+                removed=set([])
+            ))
+            self.assertEqual(dr.pk_changes, ColumnChanges(
+                new_values=['a'],
+                old_values=['a'],
+                unchanged=set(['a']),
+                added=set([]),
+                removed=set([])
+            ))
+            self.assertIsNone(dr.added_rows)
+            self.assertIsNone(dr.removed_rows)
+            self.assertIsNone(dr.modified_rows)

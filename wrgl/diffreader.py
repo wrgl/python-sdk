@@ -232,7 +232,7 @@ class DiffReader(object):
         self.pk_changes = ColumnChanges.from_new_old_columns(
             new_tbl.primary_key, old_tbl.primary_key
         )
-        if old_tbl.primary_key == new_tbl.primary_key:
+        if dr.row_diff is not None and old_tbl.primary_key == new_tbl.primary_key:
             self.added_rows = RowIterator(
                 repo=repo,
                 tbl_sum=dr.table_sum,

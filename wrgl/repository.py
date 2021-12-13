@@ -55,11 +55,10 @@ class Repository(object):
         return self._id_token
 
     def _headers(self, extra_headers=dict()):
-        if self._id_token is None:
-            raise ValueError('id_token is not set')
-        return dict([
-            ('Authorization', 'Bearer %s' % self._id_token)
-        ] + list(extra_headers.items()))
+        headers = list(extra_headers.items())
+        if self._id_token is not None:
+            headers.append(('Authorization', 'Bearer %s' % self._id_token))
+        return dict(headers)
 
     def _get(self, path, params=None):
         if params is not None:
