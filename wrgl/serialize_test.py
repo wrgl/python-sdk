@@ -51,6 +51,14 @@ class JSONTestCase(TestCase):
         obj2 = json_loads(json_str, Person)
         self.assertEqual(obj1, obj2)
 
+    def test_loads_with_null(self):
+        self.assertEqual(
+            json_loads(
+                '{"user": null, "remotes": null, "branch": null}', Config
+            ),
+            Config()
+        )
+
     def test_loads_nested(self):
         self.maxDiff = None
         obj1 = Config(

@@ -102,6 +102,9 @@ def _deserialize(data, serializer_cls):
     ]
     while len(data_stack) > 0:
         parent, name, field, value = data_stack.pop()
+        if value is None:
+            parent[name] = None
+            continue
         if type(field.type) is type:
             if attr.has(field.type):
                 parent[name] = _deserialize(value, field.type)

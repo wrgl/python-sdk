@@ -22,7 +22,7 @@ copyright = '2021, Wrangle Ltd'
 author = 'Khoi Pham'
 
 # The full version, including alpha/beta/rc tags
-release = '0.7.3.1'
+release = '0.7.6'
 
 
 # -- General configuration ---------------------------------------------------
