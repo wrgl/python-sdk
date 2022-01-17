@@ -7,7 +7,7 @@ import attr
 
 from wrgl import repository
 from wrgl.commit import Table
-from wrgl.diff import DiffResult
+from wrgl.diff import DiffResult, TableProfileDiff
 from wrgl.coldiff import ColDiff
 
 
@@ -208,6 +208,7 @@ class DiffReader(object):
     :var RowIterator added_rows: iterator for added rows
     :var RowIterator removed_rows: iterator for removed rows
     :var ModifiedRowIterator modified_rows: iterator for modified rows
+    :var TableProfileDiff data_profile: changes in data profile
     """
 
     column_changes: ColumnChanges
@@ -215,6 +216,7 @@ class DiffReader(object):
     added_rows: RowIterator or None = None
     removed_rows: RowIterator or None = None
     modified_rows: ModifiedRowIterator or None = None
+    data_profile: TableProfileDiff or None = None
 
     def __init__(self, repo: "repository.Repository", com_sum1: str, com_sum2: str, fetch_size: int = 100) -> None:
         """
@@ -223,6 +225,7 @@ class DiffReader(object):
         :param str com_sum2: checksum of the second (older) commit
         """
         dr = repo.diff(com_sum1, com_sum2)
+        self.data_profile = dr.data_profile
         old_tbl = Table(columns=dr.old_columns, pk=dr.old_pk)
         new_tbl = Table(columns=dr.columns, pk=dr.pk)
         cd = ColDiff(old_tbl, new_tbl)

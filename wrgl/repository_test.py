@@ -258,6 +258,10 @@ class RepositoryTestCase(TestCase):
                 [('1', '1'), ('q', 'q'), ('u', 'w'), (None, 'e'), ('r', None)],
                 [('2', '2'), ('a', 'a'), ('s', 's'), (None, 'd'), ('f', None)]
             ])
+            self.assertIsNotNone(dr.data_profile)
+            self.assertEqual(dr.data_profile.old_rows_count, 3)
+            self.assertEqual(dr.data_profile.new_rows_count, 3)
+            self.assertEqual(len(dr.data_profile.columns), 5)
 
     def test_diff_reader_no_changes(self):
         with self.commit("main", "initial commit", ["a"]) as writer:

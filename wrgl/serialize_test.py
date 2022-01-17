@@ -54,7 +54,7 @@ class JSONTestCase(TestCase):
     def test_loads_with_null(self):
         self.assertEqual(
             json_loads(
-                '{"user": null, "remotes": null, "branch": null}', Config
+                '{"user": null, "remotes": null, "branch": null, "nonExistentKey": null}', Config
             ),
             Config()
         )

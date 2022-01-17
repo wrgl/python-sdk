@@ -19,6 +19,34 @@ class RowDiff(object):
 
 
 @attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
+class ColumnProfileDiff(object):
+    """Changes in column profile.
+
+    :ivar str name: column name
+    :ivar bool new_addition: is this a newly added column
+    :ivar bool removed: is this a removed column
+    :ivar list[dict] stats: list of changes in statistics
+    """
+    name: str
+    new_addition: bool
+    removed: bool
+    stats: typing.List[typing.Dict]
+
+
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
+class TableProfileDiff(object):
+    """Changes in table profile.
+
+    :ivar int old_rows_count: rows count in old table
+    :ivar int new_rows_count: rows count in new table
+    :ivar list[ColumnProfileDiff] columns: list of changes in column profile
+    """
+    old_rows_count: int
+    new_rows_count: int
+    columns: typing.List[ColumnProfileDiff]
+
+
+@attr.s(auto_attribs=True, field_transformer=field_transformer(globals()))
 class DiffResult(object):
     """Diff result. Learn more at `diff endpoint`_
 
@@ -29,6 +57,7 @@ class DiffResult(object):
     :ivar list[str] columns: list of column names of the first table
     :ivar list[str] old_columns: list of column names of the second table
     :ivar list[RowDiff] row_diff: list of rows that changed
+    :ivar list[TableProfileDiff] data_profile: changes in data profile
     """
     table_sum: str
     old_table_sum: str
@@ -37,6 +66,7 @@ class DiffResult(object):
     old_columns: typing.List[str]
     columns: typing.List[str]
     row_diff: typing.List[RowDiff]
+    data_profile: TableProfileDiff
 
     @property
     def primary_key(self) -> typing.List[str]:
