@@ -205,7 +205,7 @@ class Repository(object):
         r = self._get(
             "/blocks/",
             params={
-                'commit': commit,
+                'head': commit,
                 'start': start,
                 'end': end,
                 'columns': 'true' if with_column_names else 'false'
@@ -250,7 +250,7 @@ class Repository(object):
         r = self._get(
             "/rows/",
             params={
-                'commit': commit,
+                'head': commit,
                 'offsets': ','.join([str(v) for v in offsets])
             }
         )
