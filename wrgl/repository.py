@@ -190,12 +190,12 @@ class Repository(object):
         r = self._get("/tables/%s/" % table_sum)
         return json_loads(r.content, Table)
 
-    def get_blocks(self, head: str, start: int = None, end: int = None, with_column_names: bool = True) -> Iterator[List[str]]:
+    def get_blocks(self, commit: str, start: int = None, end: int = None, with_column_names: bool = True) -> Iterator[List[str]]:
         """Fetchs blocks as concatenated rows. Each row as a list of strings.
 
         Calling this with default `start`, `end`, and `with_column_names` will return the entire table.
 
-        :param str head: either commit checksum or reference e.g. "heads/main"
+        :param str commit: either commit checksum or reference e.g. "heads/main"
         :param int start: index of the first block to fetch. Defaults to 0.
         :param int end: index of the last block to fetch. If not set, fetch til the end.
         :param bool with_column_names: prepend column names to the resulting CSV, which in effect producing a CSV with header.
@@ -205,7 +205,7 @@ class Repository(object):
         r = self._get(
             "/blocks/",
             params={
-                'head': head,
+                'commit': commit,
                 'start': start,
                 'end': end,
                 'columns': 'true' if with_column_names else 'false'
@@ -237,12 +237,12 @@ class Repository(object):
         for row in csv.reader(io.StringIO(r.text), dialect='unix'):
             yield row
 
-    def get_rows(self, head: str, offsets: List[int]) -> Iterator[List[str]]:
+    def get_rows(self, commit: str, offsets: List[int]) -> Iterator[List[str]]:
         """Get rows at certain offsets. Each row will be returned as a list of strings.
 
         This is usually used in tandem with row offsets from :class:`DiffResult` to fetch changed rows.
 
-        :param str head: either commit checksum or reference e.g. "heads/main"
+        :param str commit: either commit checksum or reference e.g. "heads/main"
         :param list[int] offsets: the offsets of the rows to fetch
 
         :rtype: typing.Iterator[list[str]]
@@ -250,7 +250,7 @@ class Repository(object):
         r = self._get(
             "/rows/",
             params={
-                'head': head,
+                'commit': commit,
                 'offsets': ','.join([str(v) for v in offsets])
             }
         )
