@@ -40,13 +40,16 @@ def download_wrgl(version):
     OS = platform.system().lower()
     if not ver_dir.exists():
         ver_dir.mkdir(parents=True)
-        url = "https://github.com/wrgl/wrgl/releases/download/v%s/wrgl-%s-amd64.tar.gz" % (
-            version, OS
-        )
-        with requests.get(url, stream=True) as r:
-            with tarfile.open(mode='r:gz', fileobj=r.raw) as tar:
-                tar.extractall(ver_dir)
-    return ver_dir / ('wrgl-%s-amd64' % OS) / 'bin'
+        for url in [
+                "https://github.com/wrgl/wrgl/releases/download/v%s/wrgl-%s-amd64.tar.gz" % (
+                    version, OS
+                ), "https://github.com/wrgl/wrgl/releases/download/v%s/wrgld-%s-amd64.tar.gz" % (
+                    version, OS
+                )]:
+            with requests.get(url, stream=True) as r:
+                with tarfile.open(mode='r:gz', fileobj=r.raw) as tar:
+                    tar.extractall(ver_dir)
+    return ver_dir / ('wrgl-%s-amd64' % OS) / 'bin' / 'wrgl', ver_dir / ('wrgld-%s-amd64' % OS) / 'bin' / 'wrgld'
 
 
 def get_open_port():
@@ -64,23 +67,29 @@ class RepositoryTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.version = read_version()
-        cls.bin_dir = download_wrgl(cls.version)
+        cls.wrgl_bin, cls.wrgld_bin = download_wrgl(cls.version)
 
-    def wrgl(self, *args):
+    def wrgl(self, args, print_result=False):
         try:
             result = subprocess.run(
-                [self.bin_dir / 'wrgl']+list(args)+["--wrgl-dir", self.repo_dir.name], check=True)
+                [str(self.wrgl_bin)]+list(args) +
+                ["--wrgl-dir", self.repo_dir.name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True)
         except subprocess.CalledProcessError as e:
-            print(e.stdout)
-            print(e.stderr)
-            raise
+            raise Exception("%s: %s\n  stdout: %s\n  stderr: %s" %
+                            (type(e).__name__, e.args, e.stdout, e.stderr))
+        if print_result:
+            print("%s\n  stdout: %s\n  stderr: %s" %
+                  (" ".join(result.args), result.stdout, result.stderr))
         return result
 
     @contextmanager
     def run_wrgld(self) -> typing.Iterator[str]:
         port = get_open_port()
         proc = subprocess.Popen(
-            [self.bin_dir / 'wrgld', self.repo_dir.name, "-p", port], stdout=subprocess.PIPE)
+            [str(self.wrgld_bin), self.repo_dir.name, "-p", port], stdout=subprocess.PIPE)
         time.sleep(1)
         yield "http://localhost:%s" % port
         proc.stdout.close()
@@ -90,25 +99,28 @@ class RepositoryTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.repo_dir = tempfile.TemporaryDirectory()
-        self.wrgl("init")
+        self.wrgl(["init"])
         self.email = "johndoe@domain.com"
         self.name = "John Doe"
         self.password = "password"
         self.wrgl(
-            "config", "set", "receive.denyNonFastForwards", "true"
+            ["config", "set", "receive.denyNonFastForwards", "true"]
         )
         self.wrgl(
-            "config", "set", "user.email", self.email
+            ["config", "set", "user.email", self.email]
         )
         self.wrgl(
-            "config", "set", "user.name", self.name
+            ["config", "set", "user.name", self.name]
         )
         self.wrgl(
-            "auth", "add-user", self.email, "--name", self.name, "--password", self.password
+            ["auth", "add-user", self.email, "--name",
+                self.name, "--password", self.password]
         )
         self.wrgl(
-            "auth", "add-scope", self.email, "--all"
+            ["auth", "add-scope", self.email, "--all"]
         )
+        self.wrgl(["config", "set", "auth.type", "legacy"])
+        self.wrgl(["config", "get", "auth.type"], print_result=True)
 
     def tearDown(self) -> None:
         self.repo_dir.cleanup()
@@ -121,7 +133,8 @@ class RepositoryTestCase(TestCase):
             yield writer
         try:
             self.wrgl(
-                "commit", branch, f.name, message, "-p", ",".join(primary_key)
+                ["commit", branch, f.name, message,
+                    "-p", ",".join(primary_key)]
             )
         finally:
             os.remove(f.name)
@@ -135,27 +148,6 @@ class RepositoryTestCase(TestCase):
         with self.run_wrgld() as url:
             repo = Repository(url)
             repo.authenticate(self.email, self.password)
-            cfg = repo.get_config()
-            self.assertEqual(cfg, Config(
-                receive=Receive(deny_non_fast_forwards=True),
-                user=User(
-                    name=self.name,
-                    email=self.email
-                )
-            ))
-            cfg.receive.deny_deletes = True
-            repo.put_config(cfg)
-            cfg = repo.get_config()
-            self.assertEqual(cfg, Config(
-                receive=Receive(
-                    deny_non_fast_forwards=True,
-                    deny_deletes=True
-                ),
-                user=User(
-                    name=self.name,
-                    email=self.email
-                )
-            ))
 
             refs = repo.get_refs()
             self.assertEqual(len(refs), 1)

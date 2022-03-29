@@ -91,23 +91,6 @@ class Repository(object):
         r.raise_for_status()
         return r
 
-    def get_config(self) -> Config:
-        """Get configurations
-
-        :rtype: Config
-        """
-        r = self._get("/config/")
-        return json_loads(r.content, Config)
-
-    def put_config(self, config: Config) -> None:
-        """Updates configurations
-
-        :param Config config: the entire configurations
-        """
-        if not isinstance(config, Config):
-            raise TypeError('config argument must be instance of %s' % Config)
-        self._put_json("/config/", config)
-
     def get_refs(self) -> dict:
         """Get references as a mapping of reference name and commit checksum
 

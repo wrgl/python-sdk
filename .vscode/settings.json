@@ -10,5 +10,6 @@
         "# Copyright © 2021 Wrangle Ltd"
       ]
     }
-  }
+  },
+  "esbonio.sphinx.confDir": "${workspaceFolder}/doc"
 }
