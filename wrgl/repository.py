@@ -15,7 +15,6 @@ from wrgl import diffreader
 from wrgl.commit import Commit, CommitResult, Table, CommitTree
 from wrgl.diff import DiffResult
 from wrgl.serialize import json_dumps, json_loads
-from wrgl.config import Config
 
 
 class Repository(object):
