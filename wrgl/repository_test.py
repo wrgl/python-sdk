@@ -43,7 +43,7 @@ def download_wrgl(version):
         for url in [
                 "https://github.com/wrgl/wrgl/releases/download/v%s/wrgl-%s-amd64.tar.gz" % (
                     version, OS
-                ), "https://github.com/wrgl/wrgl/releases/download/v%s/wrgld-%s-amd64.tar.gz" % (
+                ), "https://github.com/wrgl/wrgld/releases/download/v%s/wrgld-%s-amd64.tar.gz" % (
                     version, OS
                 )]:
             with requests.get(url, stream=True) as r:
