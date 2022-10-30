@@ -48,7 +48,26 @@ def download_wrgl(version):
                 )]:
             with requests.get(url, stream=True) as r:
                 with tarfile.open(mode='r:gz', fileobj=r.raw) as tar:
-                    tar.extractall(ver_dir)
+                    def is_within_directory(directory, target):
+                        
+                        abs_directory = os.path.abspath(directory)
+                        abs_target = os.path.abspath(target)
+                    
+                        prefix = os.path.commonprefix([abs_directory, abs_target])
+                        
+                        return prefix == abs_directory
+                    
+                    def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+                    
+                        for member in tar.getmembers():
+                            member_path = os.path.join(path, member.name)
+                            if not is_within_directory(path, member_path):
+                                raise Exception("Attempted Path Traversal in Tar File")
+                    
+                        tar.extractall(path, members, numeric_owner=numeric_owner) 
+                        
+                    
+                    safe_extract(tar, ver_dir)
     return ver_dir / ('wrgl-%s-amd64' % OS) / 'bin' / 'wrgl', ver_dir / ('wrgld-%s-amd64' % OS) / 'bin' / 'wrgld'
 
 
