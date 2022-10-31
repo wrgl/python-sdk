@@ -47,8 +47,7 @@ def download_wrgl(version):
                 ), "https://github.com/wrgl/wrgld/releases/download/v%s/wrgld-%s-amd64.tar.gz" % (
                     version, OS
                 )]:
-            with requests.get(url, stream=True) as r:
-                tar.safe_extractall(r.raw, ver_dir)
+            tar.safe_download_extractall(url, ver_dir)
     return ver_dir / ('wrgl-%s-amd64' % OS) / 'bin' / 'wrgl', ver_dir / ('wrgld-%s-amd64' % OS) / 'bin' / 'wrgld'
 
 
