@@ -23,6 +23,7 @@ import requests
 from wrgl.config import Config, Receive, User
 from wrgl.diffreader import ColumnChanges
 from wrgl.repository import Repository
+from wrgl import tar
 
 
 def read_version():
@@ -47,8 +48,7 @@ def download_wrgl(version):
                     version, OS
                 )]:
             with requests.get(url, stream=True) as r:
-                with tarfile.open(mode='r:gz', fileobj=r.raw) as tar:
-                    tar.extractall(ver_dir)
+                tar.safe_extractall(r.raw, ver_dir)
     return ver_dir / ('wrgl-%s-amd64' % OS) / 'bin' / 'wrgl', ver_dir / ('wrgld-%s-amd64' % OS) / 'bin' / 'wrgld'
 
 
