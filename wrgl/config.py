@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltd
+# Copyright © 2022 Wrangle Ltd
 
 import typing
 import attr
@@ -18,6 +18,7 @@ class User(object):
     :ivar str name: default user's name
     :ivar str email: default user's email
     """
+
     name: str
     email: str
 
@@ -30,6 +31,7 @@ class Receive(object):
     :ivar bool deny_non_fast_forwards: don't allow non-fast-forward pushes, learn more `here <https://www.wrgl.co/doc/wrgl-reference/push#refspec>`_
     :ivar bool deny_deletes: don't allow ref deletion
     """
+
     deny_non_fast_forwards: bool
     deny_deletes: bool
 
@@ -44,6 +46,7 @@ class Branch(object):
     :ivar str remote: upstream remote of the branch
     :ivar str merge: upstream ref of the branch
     """
+
     remote: str
     merge: str
 
@@ -56,6 +59,7 @@ class Auth(object):
     :ivar str token_duration: how long before a JWT token given by the `/authenticate/` endpoint of Wrgld expire.
         This is a string in the format "72h3m0.5s". Tokens last for 90 days by default.
     """
+
     token_duration: str
 
 
@@ -66,6 +70,7 @@ class Pack(object):
 
     :ivar int max_file_size: maximum packfile size in bytes
     """
+
     max_file_size: int
 
 
@@ -81,6 +86,7 @@ class Remote(object):
     :ivar list[str] push: list of refspec to automatically push to this upstream
     :ivar bool mirror: whether this upstream should mirror the repository
     """
+
     url: str
     fetch: typing.List[str]
     push: typing.List[str]
@@ -99,6 +105,7 @@ class Config(object):
     :ivar Auth auth: authentication configurations
     :ivar Pack pack: packfile configurations
     """
+
     user: User
     remote: typing.Dict[str, Remote]
     receive: Receive

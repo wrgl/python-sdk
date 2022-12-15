@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltd
+# Copyright © 2022 Wrangle Ltd
 
 import attr
 import typing
@@ -14,6 +14,7 @@ class RowDiff(object):
     :ivar int off1: row offset from the first commit. If it is not defined, this row doesn't exist in the first commit (was removed).
     :ivar int off2: row offset from the second commit. If it is not defined, this row doesn't exist in the second commit (new addition).
     """
+
     off1: int
     off2: int
 
@@ -27,6 +28,7 @@ class ColumnProfileDiff(object):
     :ivar bool removed: is this a removed column
     :ivar list[dict] stats: list of changes in statistics
     """
+
     name: str
     new_addition: bool
     removed: bool
@@ -41,6 +43,7 @@ class TableProfileDiff(object):
     :ivar int new_rows_count: rows count in new table
     :ivar list[ColumnProfileDiff] columns: list of changes in column profile
     """
+
     old_rows_count: int
     new_rows_count: int
     columns: typing.List[ColumnProfileDiff]
@@ -59,6 +62,7 @@ class DiffResult(object):
     :ivar list[RowDiff] row_diff: list of rows that changed
     :ivar list[TableProfileDiff] data_profile: changes in data profile
     """
+
     table_sum: str
     old_table_sum: str
     old_pk: typing.List[int]

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltd
+# Copyright © 2022 Wrangle Ltd
 
 import typing
 from unittest import TestCase
@@ -42,11 +42,13 @@ class Receive(object):
 
 class JSONTestCase(TestCase):
     def test_loads_simple(self):
-        obj1 = Person(name='John Doe', birth_date='10/02/2000',
-                      height=170, scores=[7, 8, 9])
+        obj1 = Person(
+            name="John Doe", birth_date="10/02/2000", height=170, scores=[7, 8, 9]
+        )
         json_str = json_dumps(obj1)
         self.assertEqual(
-            json_str, '{"name": "John Doe", "birthDate": "10/02/2000", "height": 170, "scores": [7, 8, 9]}'
+            json_str,
+            '{"name": "John Doe", "birthDate": "10/02/2000", "height": 170, "scores": [7, 8, 9]}',
         )
         obj2 = json_loads(json_str, Person)
         self.assertEqual(obj1, obj2)
@@ -54,51 +56,55 @@ class JSONTestCase(TestCase):
     def test_loads_with_null(self):
         self.assertEqual(
             json_loads(
-                '{"user": null, "remotes": null, "branch": null, "nonExistentKey": null}', Config
+                '{"user": null, "remotes": null, "branch": null, "nonExistentKey": null}',
+                Config,
             ),
-            Config()
+            Config(),
         )
 
     def test_loads_nested(self):
         self.maxDiff = None
         obj1 = Config(
-            user=Person(name='John Doe', birth_date='10/02/2000', height=170),
+            user=Person(name="John Doe", birth_date="10/02/2000", height=170),
             remotes=[
-                Remote(url='https://url1'),
-                Remote(url='https://url2'),
+                Remote(url="https://url1"),
+                Remote(url="https://url2"),
             ],
             branch={
-                'main': Branch(fetch='refs/heads/main'),
-                'test': Branch(fetch='refs/heads/test')
-            }
+                "main": Branch(fetch="refs/heads/main"),
+                "test": Branch(fetch="refs/heads/test"),
+            },
         )
         json_str = json_dumps(obj1, indent=4)
         self.assertEqual(
-            json_str, '\n'.join([
-                '{',
-                '    "user": {',
-                '        "name": "John Doe",',
-                '        "birthDate": "10/02/2000",',
-                '        "height": 170',
-                '    },',
-                '    "remotes": [',
-                '        {',
-                '            "url": "https://url1"',
-                '        },',
-                '        {',
-                '            "url": "https://url2"',
-                '        }',
-                '    ],',
-                '    "branch": {',
-                '        "main": {',
-                '            "fetch": "refs/heads/main"',
-                '        },',
-                '        "test": {',
-                '            "fetch": "refs/heads/test"',
-                '        }',
-                '    }',
-                '}',
-            ])
+            json_str,
+            "\n".join(
+                [
+                    "{",
+                    '    "user": {',
+                    '        "name": "John Doe",',
+                    '        "birthDate": "10/02/2000",',
+                    '        "height": 170',
+                    "    },",
+                    '    "remotes": [',
+                    "        {",
+                    '            "url": "https://url1"',
+                    "        },",
+                    "        {",
+                    '            "url": "https://url2"',
+                    "        }",
+                    "    ],",
+                    '    "branch": {',
+                    '        "main": {',
+                    '            "fetch": "refs/heads/main"',
+                    "        },",
+                    '        "test": {',
+                    '            "fetch": "refs/heads/test"',
+                    "        }",
+                    "    }",
+                    "}",
+                ]
+            ),
         )
         obj2 = json_loads(json_str, Config)
         self.assertEqual(obj1, obj2)

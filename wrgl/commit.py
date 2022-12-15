@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltd
+# Copyright © 2022 Wrangle Ltd
 
 import datetime
 import typing
@@ -17,6 +17,7 @@ class CommitResult(object):
     :ivar str sum: 16-bit checksum of commit presented as hex string
     :ivar str table: 16-bit checksum of underlying table presented as hex string
     """
+
     sum: str
     table: str
 
@@ -30,6 +31,7 @@ class Table(object):
     :ivar list[int] pk: indices of primary key columns
     :ivar int rows_count: number of rows
     """
+
     sum: str
     columns: typing.List[str]
     pk: typing.List[int]
@@ -60,14 +62,13 @@ class Commit(object):
     :ivar dict[str, Commit] parent_commits: mapping between parent checksums and commits.
         Only present if the commit was returned by :func:`Repository.get_commit_tree`
     """
+
     sum: str
     author_name: str
     author_email: str
     message: str
     table: Table
-    time: datetime.datetime = attr.ib(
-        converter=attr.converters.optional(fromisoformat)
-    )
+    time: datetime.datetime = attr.ib(converter=attr.converters.optional(fromisoformat))
     parents: typing.List[str]
     parent_commits: "typing.Dict[str, Commit]"
 
@@ -79,5 +80,6 @@ class CommitTree(object):
     :ivar str sum: 16-bit checksum of root commit presented as hex string
     :ivar Commit root: the root commit
     """
+
     sum: str
     root: Commit

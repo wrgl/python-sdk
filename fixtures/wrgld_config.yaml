@@ -1,0 +1,12 @@
+auth:
+  keycloak:
+    issuer: http://keycloak:8080/realms/test-realm
+    clientId: wrgld
+    clientSecret: my-secret
+    resourceId: c7191a39-735d-462a-b429-0e15877b4ee3
+  repositoryName: my-repo
+user:
+  email: johndoe@domain.com
+  name: John Doe
+receive:
+  denyNonFastForwards: true

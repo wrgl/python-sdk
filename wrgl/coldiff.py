@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltd
+# Copyright © 2022 Wrangle Ltd
 
 import attr
 import typing
@@ -16,6 +16,7 @@ def longest_increasing_list(values: typing.List[int]) -> typing.List[int]:
 
     :rtype: list[int]
     """
+
     @attr.s(auto_attribs=True)
     class Node(object):
         ind: int
@@ -26,7 +27,7 @@ def longest_increasing_list(values: typing.List[int]) -> typing.List[int]:
     root: Node = None
     for i, v in enumerate(values):
         prev: Node = None
-        for j in range(v-1, -1, -1):
+        for j in range(v - 1, -1, -1):
             if j in nodes and (prev is None or prev.len < nodes[j].len):
                 prev = nodes[j]
             if prev is not None and j < prev.len:
@@ -34,7 +35,11 @@ def longest_increasing_list(values: typing.List[int]) -> typing.List[int]:
         nodes[v] = Node(ind=i, len=1, prev=prev)
         if prev is not None:
             nodes[v].len = prev.len + 1
-        if root is None or root.len < nodes[v].len or (root.len == nodes[v].len and v == i):
+        if (
+            root is None
+            or root.len < nodes[v].len
+            or (root.len == nodes[v].len and v == i)
+        ):
             root = nodes[v]
     results = []
     while root is not None:
@@ -50,8 +55,7 @@ class MoveOp(object):
 
 
 def moveOps(sl: typing.List[int]) -> typing.List[MoveOp]:
-    """moveOps returns move operations that changed order of array indices
-    """
+    """moveOps returns move operations that changed order of array indices"""
     anchor_indices = longest_increasing_list(sl)
     for i in anchor_indices:
         sl[i] = -1
@@ -94,8 +98,7 @@ class Column(object):
 
 
 class ColDiff(object):
-    """Keeps track of how column composition and order change between a base version and one or more versions
-    """
+    """Keeps track of how column composition and order change between a base version and one or more versions"""
 
     columns: typing.List[Column]
     name_map: typing.Dict
@@ -108,19 +111,12 @@ class ColDiff(object):
         self.insert_columns(base.columns)
         for i, layer in enumerate(layers):
             self.assign_column_attrs(base.columns, i, layer.columns)
-        self.hoist_pk_to_start({
-            v: i for i, v in enumerate(layers[0].primary_key)
-        })
+        self.hoist_pk_to_start({v: i for i, v in enumerate(layers[0].primary_key)})
         self.assign_index(base, *layers)
 
     def hoist_pk_to_start(self, pk: typing.Dict[str, int]) -> None:
-        self.columns = sorted(
-            self.columns, key=lambda col: pk.get(col.name, math.inf))
-        self.name_map = {
-            s: i for i, s in enumerate([
-                col.name for col in self.columns
-            ])
-        }
+        self.columns = sorted(self.columns, key=lambda col: pk.get(col.name, math.inf))
+        self.name_map = {s: i for i, s in enumerate([col.name for col in self.columns])}
 
     def assign_index(self, base: Table, *layers: Table) -> None:
         for i, name in enumerate(base.columns):
@@ -143,19 +139,14 @@ class ColDiff(object):
             insert_map.setdefault(offset, []).append(Column(name=name))
         if len(insert_map) == 0:
             return
-        inserts = sorted(
-            list(insert_map.items()),
-            key=lambda pair: -pair[0]
-        )
+        inserts = sorted(list(insert_map.items()), key=lambda pair: -pair[0])
         for insert_off, cols in inserts:
-            self.columns[insert_off+1:insert_off+1] = cols
-        self.name_map = {
-            s: i for i, s in enumerate([
-                col.name for col in self.columns
-            ])
-        }
+            self.columns[insert_off + 1 : insert_off + 1] = cols
+        self.name_map = {s: i for i, s in enumerate([col.name for col in self.columns])}
 
-    def assign_column_attrs(self, base_cols: typing.List[str], layer_idx: int, layer_cols: typing.List[str]) -> None:
+    def assign_column_attrs(
+        self, base_cols: typing.List[str], layer_idx: int, layer_cols: typing.List[str]
+    ) -> None:
         base_set = set(base_cols)
         layer_set = set(layer_cols)
         for name in layer_cols:
@@ -166,14 +157,11 @@ class ColDiff(object):
                 self.columns[self.name_map[name]].removed.add(layer_idx)
         self.assign_column_moved(base_cols, layer_idx, layer_set)
 
-    def assign_column_moved(self, base_cols: typing.List[str], layer_idx: int, layer_set: typing.Set[str]) -> None:
-        common_cols = [
-            name for name in base_cols
-            if name in layer_set
-        ]
-        common_map = {
-            name: i for i, name in enumerate(common_cols)
-        }
+    def assign_column_moved(
+        self, base_cols: typing.List[str], layer_idx: int, layer_set: typing.Set[str]
+    ) -> None:
+        common_cols = [name for name in base_cols if name in layer_set]
+        common_map = {name: i for i, name in enumerate(common_cols)}
         old_indices = []
         new_indices = []
         for i, col in enumerate(self.columns):
@@ -185,7 +173,7 @@ class ColDiff(object):
         for op in ops:
             new_ind = new_indices[op.new_ind]
             after = None
-            for i in range(op.old_ind-1, -1, -1):
+            for i in range(op.old_ind - 1, -1, -1):
                 if i in non_anchor:
                     continue
                 after = common_cols[i]
@@ -211,22 +199,24 @@ class ColDiff(object):
 
     def rearrange_row(self, layer: int, row: typing.List[str]) -> typing.List[str]:
         return [
-            None if col.layer_idx is None or layer not in col.layer_idx
+            None
+            if col.layer_idx is None or layer not in col.layer_idx
             else row[col.layer_idx[layer]]
             for col in self.columns
         ]
 
     def rearrange_base_row(self, row: typing.List[str]) -> typing.List[str]:
         return [
-            None if col.base_idx is None else row[col.base_idx]
-            for col in self.columns
+            None if col.base_idx is None else row[col.base_idx] for col in self.columns
         ]
 
-    def combine_rows(self, layer: int, new_row: typing.List[str], old_row: typing.List[str]) -> typing.List[typing.Tuple[str or None, str or None]]:
+    def combine_rows(
+        self, layer: int, new_row: typing.List[str], old_row: typing.List[str]
+    ) -> typing.List[typing.Tuple[str or None, str or None]]:
         return [
             (
                 None if layer in col.removed else new_row[col.layer_idx[layer]],
-                None if layer in col.added else old_row[col.base_idx]
+                None if layer in col.added else old_row[col.base_idx],
             )
             for col in self.columns
         ]

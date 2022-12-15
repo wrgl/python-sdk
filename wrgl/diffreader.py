@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltdimport typing
+# Copyright © 2022 Wrangle Ltdimport typing
 
 import itertools
 import typing
@@ -7,7 +7,7 @@ import attr
 
 from wrgl import repository
 from wrgl.commit import Table
-from wrgl.diff import DiffResult, TableProfileDiff
+from wrgl.diff import TableProfileDiff
 from wrgl.coldiff import ColDiff
 
 
@@ -19,6 +19,7 @@ class RowIterator(object):
     :var list[str] columns: column names
     :var list[str] primary_key: primary key
     """
+
     _repo: "repository.Repository"
     _tbl_sum: str
     _offsets: typing.List[int]
@@ -29,12 +30,12 @@ class RowIterator(object):
     primary_key: typing.List[str]
 
     def __init__(
-            self,
-            repo: "repository.Repository",
-            tbl_sum: str,
-            columns: typing.List[str],
-            primary_key: typing.List[str],
-            fetch_size: int = 100
+        self,
+        repo: "repository.Repository",
+        tbl_sum: str,
+        columns: typing.List[str],
+        primary_key: typing.List[str],
+        fetch_size: int = 100,
     ) -> None:
         """
         :param Repository repo: the repo handle
@@ -72,8 +73,7 @@ class RowIterator(object):
             if self._off >= len(self):
                 raise StopIteration()
             self._batch = self._repo.get_table_rows(
-                self._tbl_sum,
-                self._offsets[self._off:self._off + self._fetch_size]
+                self._tbl_sum, self._offsets[self._off : self._off + self._fetch_size]
             )
             self._off += self._fetch_size
             return next(self._batch)
@@ -89,6 +89,7 @@ class ModifiedRowIterator(object):
     :var list[str] columns: column names
     :var list[str] primary_key: primary key
     """
+
     _repo: "repository.Repository"
     _tbl_sum1: str
     _tbl_sum2: str
@@ -101,14 +102,14 @@ class ModifiedRowIterator(object):
     primary_key: typing.List[str]
 
     def __init__(
-            self,
-            repo: "repository.Repository",
-            tbl_sum1: str,
-            tbl_sum2: str,
-            cd: ColDiff,
-            columns: typing.List[str],
-            primary_key: typing.List[str],
-            fetch_size: int = 100
+        self,
+        repo: "repository.Repository",
+        tbl_sum1: str,
+        tbl_sum2: str,
+        cd: ColDiff,
+        columns: typing.List[str],
+        primary_key: typing.List[str],
+        fetch_size: int = 100,
     ) -> None:
         """
         :param Repository repo: the repo handle
@@ -151,14 +152,10 @@ class ModifiedRowIterator(object):
         except StopIteration:
             if self._off >= len(self):
                 raise StopIteration()
-            offsets = self._offsets[self._off:self._off + self._fetch_size]
+            offsets = self._offsets[self._off : self._off + self._fetch_size]
             self._batch = itertools.zip_longest(
-                self._repo.get_table_rows(
-                    self._tbl_sum1, [i for i, _ in offsets]
-                ),
-                self._repo.get_table_rows(
-                    self._tbl_sum2, [i for _, i in offsets]
-                )
+                self._repo.get_table_rows(self._tbl_sum1, [i for i, _ in offsets]),
+                self._repo.get_table_rows(self._tbl_sum2, [i for _, i in offsets]),
             )
             self._off += self._fetch_size
             row1, row2 = next(self._batch)
@@ -175,6 +172,7 @@ class ColumnChanges(object):
     :var set[str] added: columns that appear in newer version but not in older version
     :var set[str] removed: columns that appear in older version but not in newer version
     """
+
     new_values: typing.List[str]
     old_values: typing.List[str]
     unchanged: typing.Set[str]
@@ -182,7 +180,9 @@ class ColumnChanges(object):
     removed: typing.Set[str]
 
     @classmethod
-    def from_new_old_columns(cls, new_cols: typing.List[str], old_cols: typing.List[str]) -> "ColumnChanges":
+    def from_new_old_columns(
+        cls, new_cols: typing.List[str], old_cols: typing.List[str]
+    ) -> "ColumnChanges":
         """Creates a new instance by comparing two column lists
 
         :param list[str] new_cols: newer columns
@@ -218,7 +218,13 @@ class DiffReader(object):
     modified_rows: ModifiedRowIterator or None = None
     data_profile: TableProfileDiff or None = None
 
-    def __init__(self, repo: "repository.Repository", com_sum1: str, com_sum2: str, fetch_size: int = 100) -> None:
+    def __init__(
+        self,
+        repo: "repository.Repository",
+        com_sum1: str,
+        com_sum2: str,
+        fetch_size: int = 100,
+    ) -> None:
         """
         :param Repository repo: the repo handle
         :param str com_sum1: checksum of the first (newer) commit
@@ -241,25 +247,23 @@ class DiffReader(object):
                 tbl_sum=dr.table_sum,
                 columns=new_tbl.columns,
                 primary_key=new_tbl.primary_key,
-                fetch_size=fetch_size
+                fetch_size=fetch_size,
             )
             self.removed_rows = RowIterator(
                 repo=repo,
                 tbl_sum=dr.old_table_sum,
                 columns=old_tbl.columns,
                 primary_key=old_tbl.primary_key,
-                fetch_size=fetch_size
+                fetch_size=fetch_size,
             )
             self.modified_rows = ModifiedRowIterator(
                 repo=repo,
                 tbl_sum1=dr.table_sum,
                 tbl_sum2=dr.old_table_sum,
                 cd=cd,
-                columns=[
-                    col.name for col in cd.columns
-                ],
+                columns=[col.name for col in cd.columns],
                 primary_key=new_tbl.primary_key,
-                fetch_size=fetch_size
+                fetch_size=fetch_size,
             )
             for rd in dr.row_diff:
                 if rd.off1 is None:

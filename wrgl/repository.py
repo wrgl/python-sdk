@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2021 Wrangle Ltd
+# Copyright © 2022 Wrangle Ltd
 
 from typing import Iterator, List
 import tempfile
 import gzip
 import shutil
 import typing
-import requests
 import csv
 import io
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -14,88 +13,33 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 from wrgl import diffreader
 from wrgl.commit import Commit, CommitResult, Table, CommitTree
 from wrgl.diff import DiffResult
-from wrgl.serialize import json_dumps, json_loads
+from wrgl.serialize import json_loads
+from wrgl.uma import UMAClient
 
 
 class Repository(object):
-    """Represents the HTTP API that wraps a hosted Wrgl repository
-    """
+    """Represents the HTTP API that wraps a hosted Wrgl repository"""
 
-    def __init__(self, endpoint: str, id_token: str = None) -> None:
+    def __init__(
+        self, repo_uri: str, client_id: str, client_secret: str = None
+    ) -> None:
         """
         :param str endpoint: the endpoint of the HTTP API
         :param str id_token: optional, the access token for this API.
             If it is a valid token then you don't need to run :func:`Repository.authenticate`.
         """
-        self.endpoint = endpoint.rstrip("/")
-        self._is_hub_repo = self.endpoint.startswith("https://hub.wrgl.co/")
-        self._id_token = id_token
+        self._client = UMAClient(repo_uri, client_id, client_secret)
 
-    def authenticate(self, email: str, password: str) -> str:
-        """Authenticates and returns the access token.
-
-        If successful, access token will be saved for future usage.
-
-        :param str email: user's email
-        :param str password: user's password
-
-        :rtype: str
-        """
-        if self._is_hub_repo:
-            endpoint = "https://hub.wrgl.co/api/authenticate/"
-        else:
-            endpoint = self.endpoint + "/authenticate/"
-        r = requests.post(endpoint, json={
-            'email': email,
-            'password': password
-        })
-        r.raise_for_status()
-        self._id_token = r.json()['idToken']
-        return self._id_token
-
-    def _headers(self, extra_headers=dict()):
-        headers = list(extra_headers.items())
-        if self._id_token is not None:
-            headers.append(('Authorization', 'Bearer %s' % self._id_token))
-        return dict(headers)
-
-    def _get(self, path, params=None):
-        if params is not None:
-            params = {k: v for k, v in params.items() if v}
-        r = requests.get(
-            self.endpoint+path, params=params, headers=self._headers(),
-        )
-        r.raise_for_status()
-        return r
-
-    def _put_json(self, path, obj):
-        r = requests.put(
-            self.endpoint+path,
-            data=json_dumps(obj),
-            headers=self._headers({
-                'Content-Type': 'application/json'
-            }),
-        )
-        r.raise_for_status()
-        return r
-
-    def _post_json(self, path, obj):
-        r = requests.post(
-            self.endpoint+path,
-            data=json_dumps(obj),
-            headers=self._headers({
-                'Content-Type': 'application/json'
-            }),
-        )
-        r.raise_for_status()
-        return r
+    @property
+    def rpt(self) -> str:
+        return self._client.rpt
 
     def get_refs(self) -> dict:
         """Get references as a mapping of reference name and commit checksum
 
         :rtype: dict
         """
-        r = self._get("/refs/")
+        r = self._client.get("/refs/")
         obj = r.json()
         return obj["refs"]
 
@@ -106,10 +50,16 @@ class Repository(object):
 
         :rtype: Commit
         """
-        r = self._get("/refs/heads/%s/" % branch)
+        r = self._client.get("/refs/heads/%s/" % branch)
         return json_loads(r.content, Commit)
 
-    def commit(self, branch: str, message: str, file: typing.BinaryIO, primary_key: typing.List[str]) -> CommitResult:
+    def commit(
+        self,
+        branch: str,
+        message: str,
+        file: typing.BinaryIO,
+        primary_key: typing.List[str],
+    ) -> CommitResult:
         """Creates a new commit
 
         :param str branch: name of the branch to commit under
@@ -120,23 +70,28 @@ class Repository(object):
         :rtype: CommitResult
         """
         with tempfile.TemporaryFile() as fp:
-            with gzip.open(fp, 'w') as gzf:
+            with gzip.open(fp, "w") as gzf:
                 shutil.copyfileobj(file, gzf)
-            fp.seek(0)
-            m = MultipartEncoder(
-                fields={
-                    'branch': branch,
-                    'message': message,
-                    'primaryKey': ','.join(primary_key),
-                    'file': ('data.csv.gz', fp, 'text/csv')
+
+            def create_request_args():
+                fp.seek(0)
+                m = MultipartEncoder(
+                    fields={
+                        "branch": branch,
+                        "message": message,
+                        "primaryKey": ",".join(primary_key),
+                        "file": ("data.csv.gz", fp, "text/csv"),
+                    }
+                )
+                return {
+                    "data": m,
+                    "headers": {"Content-Type": m.content_type},
                 }
+
+            r = self._client.post(
+                "/commits/",
+                create_request_args=create_request_args,
             )
-            r = requests.post(
-                self.endpoint+"/commits/",
-                data=m,
-                headers=self._headers({'Content-Type': m.content_type}),
-            )
-        r.raise_for_status()
         return json_loads(r.content, CommitResult)
 
     def get_commit_tree(self, head: str, max_depth: int) -> CommitTree:
@@ -147,9 +102,7 @@ class Repository(object):
 
         :rtype: CommitTree
         """
-        r = self._get(
-            "/commits/", params={'head': head, 'maxDepth': max_depth}
-        )
+        r = self._client.get("/commits/", params={"head": head, "maxDepth": max_depth})
         return json_loads(r.content, CommitTree)
 
     def get_commit(self, commit_sum: str) -> Commit:
@@ -159,7 +112,7 @@ class Repository(object):
 
         :rtype: Commit
         """
-        r = self._get("/commits/%s/" % commit_sum)
+        r = self._client.get("/commits/%s/" % commit_sum)
         return json_loads(r.content, Commit)
 
     def get_table(self, table_sum: str) -> Table:
@@ -169,10 +122,16 @@ class Repository(object):
 
         :rtype: Table
         """
-        r = self._get("/tables/%s/" % table_sum)
+        r = self._client.get("/tables/%s/" % table_sum)
         return json_loads(r.content, Table)
 
-    def get_blocks(self, commit: str, start: int = None, end: int = None, with_column_names: bool = True) -> Iterator[List[str]]:
+    def get_blocks(
+        self,
+        commit: str,
+        start: int = None,
+        end: int = None,
+        with_column_names: bool = True,
+    ) -> Iterator[List[str]]:
         """Fetchs blocks as concatenated rows. Each row as a list of strings.
 
         Calling this with default `start`, `end`, and `with_column_names` will return the entire table.
@@ -184,19 +143,25 @@ class Repository(object):
 
         :rtype: typing.Iterator[list[str]]
         """
-        r = self._get(
+        r = self._client.get(
             "/blocks/",
             params={
-                'head': commit,
-                'start': start,
-                'end': end,
-                'columns': 'true' if with_column_names else 'false'
-            }
+                "head": commit,
+                "start": start,
+                "end": end,
+                "columns": "true" if with_column_names else "false",
+            },
         )
-        for row in csv.reader(io.StringIO(r.text), dialect='unix'):
+        for row in csv.reader(io.StringIO(r.text), dialect="unix"):
             yield row
 
-    def get_table_blocks(self, table_sum: str, start: int = None, end: int = None, with_column_names: bool = True) -> Iterator[List[str]]:
+    def get_table_blocks(
+        self,
+        table_sum: str,
+        start: int = None,
+        end: int = None,
+        with_column_names: bool = True,
+    ) -> Iterator[List[str]]:
         """Fetchs blocks with table checksum.
 
         Calling this with default `start`, `end`, and `with_column_names` will return the entire table.
@@ -208,15 +173,15 @@ class Repository(object):
 
         :rtype: typing.Iterator[list[str]]
         """
-        r = self._get(
+        r = self._client.get(
             "/tables/%s/blocks/" % table_sum,
             params={
-                'start': start,
-                'end': end,
-                'columns': 'true' if with_column_names else 'false'
-            }
+                "start": start,
+                "end": end,
+                "columns": "true" if with_column_names else "false",
+            },
         )
-        for row in csv.reader(io.StringIO(r.text), dialect='unix'):
+        for row in csv.reader(io.StringIO(r.text), dialect="unix"):
             yield row
 
     def get_rows(self, commit: str, offsets: List[int]) -> Iterator[List[str]]:
@@ -229,14 +194,11 @@ class Repository(object):
 
         :rtype: typing.Iterator[list[str]]
         """
-        r = self._get(
+        r = self._client.get(
             "/rows/",
-            params={
-                'head': commit,
-                'offsets': ','.join([str(v) for v in offsets])
-            }
+            params={"head": commit, "offsets": ",".join([str(v) for v in offsets])},
         )
-        for row in csv.reader(io.StringIO(r.text), dialect='unix'):
+        for row in csv.reader(io.StringIO(r.text), dialect="unix"):
             yield row
 
     def get_table_rows(self, table_sum: str, offsets: List[int]) -> Iterator[List[str]]:
@@ -249,13 +211,11 @@ class Repository(object):
 
         :rtype: typing.Iterator[list[str]]
         """
-        r = self._get(
+        r = self._client.get(
             "/tables/%s/rows/" % table_sum,
-            params={
-                'offsets': ','.join([str(v) for v in offsets])
-            }
+            params={"offsets": ",".join([str(v) for v in offsets])},
         )
-        for row in csv.reader(io.StringIO(r.text), dialect='unix'):
+        for row in csv.reader(io.StringIO(r.text), dialect="unix"):
             yield row
 
     def diff(self, sum1: str, sum2: str) -> DiffResult:
@@ -266,12 +226,12 @@ class Repository(object):
 
         :rtype: DiffResult
         """
-        r = self._get(
-            "/diff/%s/%s/" % (sum1, sum2)
-        )
+        r = self._client.get("/diff/%s/%s/" % (sum1, sum2))
         return json_loads(r.content, DiffResult)
 
-    def diff_reader(self, sum1: str, sum2: str, fetch_size: int = 100) -> diffreader.DiffReader:
+    def diff_reader(
+        self, sum1: str, sum2: str, fetch_size: int = 100
+    ) -> diffreader.DiffReader:
         """Compares two commits and interpret their differences.
 
         This method is higher level than :func:`Repository.diff` and should
