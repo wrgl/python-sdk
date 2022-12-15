@@ -30,10 +30,6 @@ class Repository(object):
         """
         self._client = UMAClient(repo_uri, client_id, client_secret)
 
-    @property
-    def rpt(self) -> str:
-        return self._client.rpt
-
     def get_refs(self) -> dict:
         """Get references as a mapping of reference name and commit checksum
 
@@ -52,6 +48,16 @@ class Repository(object):
         """
         r = self._client.get("/refs/heads/%s/" % branch)
         return json_loads(r.content, Commit)
+
+    def authenticate(self) -> str:
+        """Exchanges client id and secret for an rpt"""
+        if not self._client.rpt:
+            # attempt to authenticate via an empty commit request
+            self._client.post(
+                "/commits/",
+                rpt_only=True,
+            )
+        return self._client.rpt
 
     def commit(
         self,

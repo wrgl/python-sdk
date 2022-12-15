@@ -118,6 +118,7 @@ class UMAClient:
         params=None,
         headers=None,
         create_request_args: Union[Callable[..., Dict], None] = None,
+        rpt_only=False,
         *args,
         **kwargs
     ) -> requests.Response:
@@ -128,6 +129,7 @@ class UMAClient:
         :param dict params: optional, query parameters
         :param dict headers: optional, HTTP headers
         :param func create_request_args: optional. If defined, this function is called to generate request arguments. Useful when request need to be retried.
+        :param bool rpt_only: optional, stop when an RPT is acquired. Useful when the RPT is all that is needed.
         :param list args: extra positional arguments passed to requests.request. Ignored if create_request_args is defined.
         :param dict kwargs: extra keyword arguments passed to requests.request. Ignored if create_request_args is defined.
 
@@ -141,6 +143,8 @@ class UMAClient:
             as_uri, uma_ticket = self._extract_uma_ticket(resp)
             if uma_ticket is not None:
                 self._ensure_rpt(as_uri, uma_ticket)
+                if rpt_only:
+                    return resp
                 resp = self._do_request(
                     method, url, params, headers, create_request_args, *args, **kwargs
                 )
@@ -170,6 +174,7 @@ class UMAClient:
         params=None,
         headers=None,
         create_request_args: Union[Callable[..., Dict], None] = None,
+        rpt_only=False,
         *args,
         **kwargs
     ) -> requests.Response:
@@ -179,6 +184,7 @@ class UMAClient:
         :param dict params: optional, query parameters
         :param dict headers: optional, HTTP headers
         :param func create_request_args: optional. If defined, this function is called to generate request arguments. Useful when request need to be retried.
+        :param bool rpt_only: optional, stop when an RPT is acquired. Useful when the RPT is all that is needed.
         :param list args: extra positional arguments passed to requests.request. Ignored if create_request_args is defined.
         :param dict kwargs: extra keyword arguments passed to requests.request. Ignored if create_request_args is defined.
 
@@ -190,6 +196,7 @@ class UMAClient:
             params=params,
             headers=headers,
             create_request_args=create_request_args,
+            rpt_only=rpt_only,
             *args,
             **kwargs
         )

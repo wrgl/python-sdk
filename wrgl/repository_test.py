@@ -3,18 +3,13 @@
 
 from datetime import datetime
 import typing
-import platform
 import _csv
 from unittest import TestCase
 from contextlib import contextmanager
 import io
 import tempfile
-import pathlib
 import socket
-import re
-import time
 import os
-import subprocess
 import csv
 
 from wrgl.diffreader import ColumnChanges
@@ -54,6 +49,11 @@ class RepositoryTestCase(TestCase):
                 self.repo.commit(branch, message, f2, primary_key)
         finally:
             os.remove(f.name)
+
+    @use_vcr
+    def test_authenticate(self):
+        rpt = self.repo.authenticate()
+        self.assertTrue(not not rpt)
 
     @use_vcr
     def test_commit(self):
