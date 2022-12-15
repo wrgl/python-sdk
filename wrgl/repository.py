@@ -24,9 +24,9 @@ class Repository(object):
         self, repo_uri: str, client_id: str, client_secret: str = None
     ) -> None:
         """
-        :param str endpoint: the endpoint of the HTTP API
-        :param str id_token: optional, the access token for this API.
-            If it is a valid token then you don't need to run :func:`Repository.authenticate`.
+        :param str repo_uri: the URI of the repository
+        :param str client_id: Keycloak client id
+        :param str client_secret: Keycloak client secret
         """
         self._client = UMAClient(repo_uri, client_id, client_secret)
 

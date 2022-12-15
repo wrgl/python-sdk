@@ -13,9 +13,7 @@ Install the package with pip:
 Initialization
 --------------
 
-There are two ways to initialize:
-
-- If you already have an access token:
+First, create a Keycloak client authorized with scope "read" and "write" on the repository is needed. Then pass in client id and secret during initialization:
 
 .. code-block:: python
 
@@ -25,21 +23,11 @@ There are two ways to initialize:
     # read access token from environment variable
     repo = Repository(
         # replace "my-repository" with wrgld host
-        # if the repository is hosted at wrglhub then it should have the form
-        # https://hub.wrgl.co/api/users/{username}/repos/{reponame}/
         'https://my-repository',
-        # read access token from environment variable
-        os.getenv('REPO_ACCESS_TOKEN')
+        # read client id and secret from environment variable
+        os.getenv('CLIENT_ID'),
+        os.getenv('CLIENT_SECRET')
     )
-
-- If you have email/password and want to authenticate with that and/or want to acquite an access token:
-
-.. code-block:: python
-
-    from wrgl import Repository
-
-    repo = Repository('https://my-repository')
-    token = repo.authenticate('my-email@domain.com', 'password')
 
 Common operations
 -----------------

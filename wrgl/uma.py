@@ -15,6 +15,11 @@ class UMAClient:
     rpt: str = ""
 
     def __init__(self, rsc_uri: str, client_id: str, client_secret: str) -> None:
+        """
+        :param str rsc_uri: the URI of the UMA resource
+        :param str client_id: Keycloak client id
+        :param str client_secret: Keycloak client secret
+        """
         self._rsc_uri = rsc_uri.rstrip("/")
         self._client_id = client_id
         self._client_secret = client_secret
@@ -73,7 +78,6 @@ class UMAClient:
         return
 
     def _ensure_rpt(self, as_uri: str, uma_ticket: str) -> None:
-        print("_ensure_rpt")
         uma_config = self._discover_uma_config(as_uri)
         token_endpoint = uma_config["token_endpoint"]
         if not self._access_token:
@@ -97,7 +101,6 @@ class UMAClient:
         *args,
         **kwargs
     ) -> requests.Response:
-        print("_do_request")
         if create_request_args is not None:
             args_dict = create_request_args()
             args_dict["headers"] = self._headers(args_dict.get("headers", None))
@@ -118,7 +121,18 @@ class UMAClient:
         *args,
         **kwargs
     ) -> requests.Response:
-        print("request")
+        """Make a request
+
+        :param str method: HTTP verb
+        :param str path: path relative to rsc_uri
+        :param dict params: optional, query parameters
+        :param dict headers: optional, HTTP headers
+        :param func create_request_args: optional. If defined, this function is called to generate request arguments. Useful when request need to be retried.
+        :param list args: extra positional arguments passed to requests.request. Ignored if create_request_args is defined.
+        :param dict kwargs: extra keyword arguments passed to requests.request. Ignored if create_request_args is defined.
+
+        :rtype: requests.Response
+        """
         url = self._rsc_uri + path
         resp = self._do_request(
             method, url, params, headers, create_request_args, *args, **kwargs
@@ -136,6 +150,16 @@ class UMAClient:
     def get(
         self, path: str, params=None, headers=None, *args, **kwargs
     ) -> requests.Response:
+        """Make a get request
+
+        :param str path: path relative to rsc_uri
+        :param dict params: optional, query parameters
+        :param dict headers: optional, HTTP headers
+        :param list args: extra positional arguments passed to requests.request. Ignored if create_request_args is defined.
+        :param dict kwargs: extra keyword arguments passed to requests.request. Ignored if create_request_args is defined.
+
+        :rtype: requests.Response
+        """
         return self.request(
             "GET", path, params=params, headers=headers, *args, **kwargs
         )
@@ -149,7 +173,17 @@ class UMAClient:
         *args,
         **kwargs
     ) -> requests.Response:
-        print("post")
+        """Make a post request
+
+        :param str path: path relative to rsc_uri
+        :param dict params: optional, query parameters
+        :param dict headers: optional, HTTP headers
+        :param func create_request_args: optional. If defined, this function is called to generate request arguments. Useful when request need to be retried.
+        :param list args: extra positional arguments passed to requests.request. Ignored if create_request_args is defined.
+        :param dict kwargs: extra keyword arguments passed to requests.request. Ignored if create_request_args is defined.
+
+        :rtype: requests.Response
+        """
         return self.request(
             "POST",
             path,
